@@ -16,7 +16,7 @@ jobs:
            password: ${{ secrets.DOCKER_PASSWORD }}
         
        - name: Build Docker Image
-         run: docker build -t shannudocker@02/myapp .
+         run: docker build -t shannudocker02/myapp .
 
        - name: Push to Docker Hub
          run: docker push shannudocker02/myapp
