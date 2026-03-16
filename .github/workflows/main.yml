@@ -1,0 +1,11 @@
+name: my first CI/CD
+On:
+  push:
+     branches: [ main ]
+jobs:
+  build:
+     runs-on: ubuntu-latest
+     steps:
+       - uses: actions/checkout@v3
+       - name: run python
+         run: python3 --version
