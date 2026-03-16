@@ -1,5 +1,5 @@
 name: my first CI/CD
-On:
+on:
   push:
      branches: [ main ]
 jobs:
