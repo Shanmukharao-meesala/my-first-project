@@ -1,2 +1,2 @@
-print("hello from docker container")
-print("this app is ruuning inside of the docker")
+print("HELLO from CI/CD!")
+print("Auto deployed by gitHub Actions!")
