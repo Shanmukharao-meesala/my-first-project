@@ -1,2 +1,2 @@
-print("HELLO from CI/CD!")
-print("Auto deployed by gitHub Actions!")
+print("my secound deployment")
+print("DEVOPS is awesome!")
