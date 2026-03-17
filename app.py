@@ -1,17 +1,22 @@
-def add(a, b):
-     return a + b
+from flask import Flask
 
-def subtraction(a, b):
-     return a - b
+app = Flask(__name__)
+
+def add(a, b):
+    return a + b
+
+def substract(a, b):
+    return a - b
 
 def multiply(a, b):
-     return a * b
+    return a * b
 
-print("CALCULATOR APP")
+@app.route('/')
+def home():
+    result_add = add(10, 5)
+    result_sub = substract(10, 5)
+    result_mul = multiply(10, 5)
+    return f"Addition: {result_add}, Subtraction: {result-sub}, Multiply: {result-mul}"
 
-a = int(input("Enter first number: "))
-b = int(input("Enter secound number: "))
-
-print("addition:", add(a, b))
-print("subtraction", subtraction(a, b))
-print("multiplication", multiply(a, b))
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
