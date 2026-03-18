@@ -3,33 +3,49 @@ import random
 
 app = Flask(__name__)
 
-colors = ["red", "blue", "green", "yellow", "purple", "orange"]
+emojis = ["😂", "😜", "🤪", "😎", "🥳", "🐵", "🐶", "🦄", "🐸"]
+
+messages = [
+    "Why did the cat laugh? Because it saw a funny mouse! 😆",
+    "Why did the banana slip? Because it was too funny! 🍌😂",
+    "Why is the monkey happy? It found a banana! 🐵",
+    "Why is the dog laughing? It heard a joke! 🐶😄",
+    "Unicorn says: Stay magical! 🦄✨",
+    "Frog says: Ribbit and laugh! 🐸😂"
+]
 
 @app.route('/')
 def home():
-    color = random.choice(colors)
+    emoji = random.choice(emojis)
+    message = random.choice(messages)
 
     return f"""
     <html>
     <head>
-        <title>Fun Color Game</title>
+        <title>Funny Cartoon App</title>
     </head>
 
-    <body style="text-align:center; font-family: Arial; background:{color}; color:white;">
+    <body style="text-align:center; font-family: Comic Sans MS; background:yellow;">
 
-        <h1>🎨 Click for Magic Color 🎨</h1>
+        <h1>😂 Funny Cartoon World 😂</h1>
 
-        <p style="font-size:20px;">Background Color: {color.upper()}</p>
+        <div style="font-size:80px;">
+            {emoji}
+        </div>
+
+        <h2>{message}</h2>
+
+        <br>
 
         <a href="/" style="
             padding:15px 25px;
-            background:white;
-            color:black;
+            background:red;
+            color:white;
             text-decoration:none;
             border-radius:10px;
-            font-size:18px;
+            font-size:20px;
         ">
-            Click Me 😄
+            Click Me For Fun 😄
         </a>
 
     </body>
@@ -38,4 +54,3 @@ def home():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
