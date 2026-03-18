@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, url_for
 
 app = Flask(__name__)
 
@@ -6,15 +6,35 @@ tasks = []
 
 @app.route('/')
 def home():
-    task_list = "".join(f"<li>{t} <a href='/delete/{i}'>❌</a></li>" 
-                        for i, t in enumerate(tasks))
+    task_list = ""
+    for i, task in enumerate(tasks):
+        task_list += f"""
+        <li>
+            {i+1}. {task}
+            <a href="/delete/{i}" style="color:red; text-decoration:none;"> ❌ </a>
+        </li>
+        """
+
     return f"""
-        <h1>To-Do List</h1>
+    <html>
+    <head>
+        <title>To-Do App</title>
+    </head>
+    <body style="font-family: Arial; text-align: center;">
+
+        <h1>📝 My To-Do List</h1>
+
         <form method="POST" action="/add">
-            <input name="task" placeholder="New task">
-            <button>Add</button>
+            <input name="task" placeholder="Enter new task" required>
+            <button>Add Task</button>
         </form>
-        <ul>{task_list}</ul>
+
+        <ul style="list-style: none;">
+            {task_list}
+        </ul>
+
+    </body>
+    </html>
     """
 
 @app.route('/add', methods=['POST'])
@@ -22,14 +42,13 @@ def add():
     task = request.form.get('task')
     if task:
         tasks.append(task)
-    return redirect('/')
+    return redirect(url_for('home'))
 
 @app.route('/delete/<int:index>')
 def delete(index):
-    tasks.pop(index)
-    return redirect('/')
+    if 0 <= index < len(tasks):
+        tasks.pop(index)
+    return redirect(url_for('home'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-
-
+    app.run(debug=True)
