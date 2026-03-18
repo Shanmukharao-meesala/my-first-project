@@ -28,8 +28,7 @@ jobs:
            username: ubuntu
            key: ${{ secrets.EC2_SSH_KEY }}
            script: |
+              sudo docker rm -f myapp || true
               sudo docker pull shannudocker02/myapp
-              sudo docker stop myapp || true
-              sudo docker rm myapp || true
               sudo docker run -d --name myapp -p 5000:5000 shannudocker02/myapp
          
