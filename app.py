@@ -16,7 +16,7 @@ def home():
         if student["marks"] >= 40:
            status = "pass good luck"
         else:
-             status "fail better luck next time"
+             status = "fail better luck next time"
         result += f"{student['name']} - {student['marks']} - {status}<br>"
     return result
 
