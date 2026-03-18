@@ -2,21 +2,23 @@ from flask import Flask
 
 app = Flask(__name__)
 
-def add(a, b):
-    return a + b
-
-def substract(a, b):
-    return a - b
-
-def multiply(a, b):
-    return a * b
+students = [
+   {"name": "shannu", "marks": 75},
+   {"name": "chitti", "marks": 89},
+   {"name": "bhavani", "marks": 80},
+   {"name": "sai", "marks": 29},
+]
 
 @app.route('/')
 def home():
-    result_add = add(10, 5)
-    result_sub = substract(10, 5)
-    result_mul = multiply(10, 5)
-    return f"Addition: {result_add}, Subtraction: {result-sub}, Multiply: {result-mul}"
+    result = ""
+    for student in students:
+        if student["marks"] >= 40:
+           status = "pass good luck"
+        else:
+             status "fail better luck next time"
+        result += f"{student['name']} - {student['marks']} - {status}<br>"
+    return result
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
