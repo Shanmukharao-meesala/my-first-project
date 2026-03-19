@@ -3,65 +3,121 @@ import random
 
 app = Flask(__name__)
 
-# Game variables
+team1 = "RCB 🔴"
+team2 = "CSK 🟡"
+
 team1_score = 0
 team2_score = 0
 balls = 0
-innings = 1   # 1 = RCB, 2 = CSK
+innings = 1
 game_over = False
+last_result = ""
+target = 0
 
 def play_ball():
-    return random.choice([0, 1, 2, 4, 6, "OUT"])
+    return random.choice([0, 1, 2, 3, 4, 6, "OUT"])
 
 @app.route('/')
 def home():
-    global innings, balls, team1_score, team2_score, game_over
+    global innings, balls, team1_score, team2_score, game_over, target, last_result
+
+    # decide sound
+    sound = ""
+    if "OUT" in last_result:
+        sound = "https://www.soundjay.com/button/beep-10.mp3"
+    elif any(x in last_result for x in ["4", "6"]):
+        sound = "https://www.soundjay.com/human/applause-8.mp3"
+    else:
+        sound = "https://www.soundjay.com/button/button-3.mp3"
 
     if game_over:
+        result = "Match Draw 🤝"
         if team1_score > team2_score:
-            result = "🔴 RCB Wins!"
+            result = f"{team1} Wins 🏆"
         elif team2_score > team1_score:
-            result = "🟡 CSK Wins!"
-        else:
-            result = "🤝 Match Draw!"
+            result = f"{team2} Wins 🏆"
 
         return f"""
-        <html><body style="text-align:center; background:black; color:white;">
-        <h1>🏏 IPL Match Result</h1>
-        <h2>RCB: {team1_score}</h2>
-        <h2>CSK: {team2_score}</h2>
-        <h1>{result}</h1>
-        <a href="/restart">🔄 Play Again</a>
-        </body></html>
+        <html>
+        <body style="text-align:center; background:black; color:white;">
+            <h1>🏏 FINAL RESULT</h1>
+            <h2>{team1}: {team1_score}</h2>
+            <h2>{team2}: {team2_score}</h2>
+            <h1>{result}</h1>
+
+            <audio autoplay>
+                <source src="https://www.soundjay.com/human/cheering-1.mp3">
+            </audio>
+
+            <a href="/restart">Play Again 🔄</a>
+        </body>
+        </html>
         """
 
-    team = "🔴 RCB Batting" if innings == 1 else "🟡 CSK Batting"
+    team = team1 if innings == 1 else team2
+    chase = f"🎯 Target: {target}" if innings == 2 else ""
 
     return f"""
     <html>
-    <body style="text-align:center; background:lightgreen;">
-        <h1>🏏 IPL Game</h1>
-        <h2>{team}</h2>
-        <h3>Balls: {balls}/6</h3>
-        <h2>RCB: {team1_score} | CSK: {team2_score}</h2>
+    <head>
+    <style>
+        body {{
+            text-align:center;
+            font-family:Arial;
+            background-image:url('https://images.unsplash.com/photo-1505842465776-3f6f4c8c6b63');
+            background-size:cover;
+            color:white;
+        }}
 
-        <a href="/play" style="
-            padding:15px;
+        .card {{
+            background: rgba(0,0,0,0.7);
+            padding:20px;
+            border-radius:15px;
+            margin:50px;
+        }}
+
+        .btn {{
+            padding:20px;
             background:orange;
             color:white;
-            border-radius:10px;
+            font-size:22px;
+            border-radius:15px;
             text-decoration:none;
-        ">🏏 Play Ball</a>
+        }}
+    </style>
+    </head>
+
+    <body>
+
+        <div class="card">
+            <h1>🏏 IPL GAME</h1>
+
+            <h2>{team} Batting</h2>
+            <h3>Balls: {balls}/6</h3>
+
+            <h2>RCB: {team1_score} | CSK: {team2_score}</h2>
+            <h3>{chase}</h3>
+
+            <h1>{last_result}</h1>
+
+            <a href="/play" class="btn">🏏 HIT</a>
+        </div>
+
+        <audio autoplay>
+            <source src="{sound}">
+        </audio>
+
     </body>
     </html>
     """
 
 @app.route('/play')
 def play():
-    global team1_score, team2_score, balls, innings, game_over
+    global team1_score, team2_score, balls, innings, game_over, last_result, target
 
     result = play_ball()
     balls += 1
+    last_result = f"{result}"
 
     if innings == 1:
         if result != "OUT":
@@ -70,39 +126,30 @@ def play():
         if result != "OUT":
             team2_score += result
 
-    # Switch innings
-    if balls == 6:
+    if balls == 6 and innings == 1:
+        innings = 2
         balls = 0
-        if innings == 1:
-            innings = 2
-        else:
-            game_over = True
+        target = team1_score + 1
 
-    # Chase win early
-    if innings == 2 and team2_score > team1_score:
+    elif balls == 6 and innings == 2:
         game_over = True
 
-    return f"""
-    <html>
-    <body style="text-align:center; background:yellow;">
-        <h1>Result: {result}</h1>
-        <h2>RCB: {team1_score} | CSK: {team2_score}</h2>
-        <a href="/">➡️ Continue</a>
-    </body>
-    </html>
-    """
+    if innings == 2 and team2_score >= target:
+        game_over = True
+
+    return redirect('/')
 
 @app.route('/restart')
 def restart():
-    global team1_score, team2_score, balls, innings, game_over
+    global team1_score, team2_score, balls, innings, game_over, last_result, target
     team1_score = 0
     team2_score = 0
     balls = 0
     innings = 1
     game_over = False
+    last_result = ""
+    target = 0
     return redirect('/')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
-
+     app.run(host='0.0.0.0', port=5000, debug=True)
