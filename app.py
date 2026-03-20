@@ -1,387 +1,747 @@
-from flask import Flask
+from flask import Flask, redirect, request, session
+import random
 
 app = Flask(__name__)
+app.secret_key = 'shannuhousie2024'
+
+HOST_PASSWORD = "Shannu@0987"
+
+game_state = {
+    'tickets': {},
+    'called_numbers': [],
+    'players': {},
+    'max_players': 0,
+    'game_started': False,
+    'game_over': False,
+    'game_code': None,
+    'winners': {
+        'jaldi5': None,
+        'line1': None,
+        'line2': None,
+        'line3': None,
+        'housie': None
+    }
+}
+
+def generate_ticket():
+    ticket = []
+    used_numbers = set()
+    for row in range(3):
+        row_data = []
+        blanks = random.sample(range(9), 4)
+        for col in range(9):
+            if col in blanks:
+                row_data.append(0)
+            else:
+                start = col * 10 + 1
+                end = min(start + 9, 91)
+                num = random.randint(start, end - 1)
+                while num in used_numbers:
+                    num = random.randint(start, end - 1)
+                used_numbers.add(num)
+                row_data.append(num)
+        ticket.append(row_data)
+    return ticket
+
+STYLES = '''
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    background: linear-gradient(135deg, #1a0533 0%, #2d0a5e 50%, #1a0533 100%);
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+    color: white;
+}
+.container {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 20px 15px;
+    text-align: center;
+}
+.logo {
+    font-size: 2em;
+    font-weight: bold;
+    color: #FFD700;
+    text-shadow: 0 0 20px #FFD700;
+    margin-bottom: 5px;
+}
+.subtitle { color: #c9a0ff; font-size: 0.9em; margin-bottom: 20px; }
+.card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 20px;
+    padding: 25px 20px;
+    margin: 15px 0;
+}
+.btn {
+    display: inline-block;
+    padding: 14px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    margin: 8px;
+    touch-action: manipulation;
+    text-decoration: none;
+}
+.btn:active { transform: scale(0.95); }
+.btn-gold { background: linear-gradient(45deg, #FFD700, #FFA500); color: black; }
+.btn-purple { background: linear-gradient(45deg, #7B2FBE, #9D4EDD); color: white; }
+.btn-green { background: linear-gradient(45deg, #2d6a4f, #52b788); color: white; }
+.btn-red { background: linear-gradient(45deg, #c1121f, #e63946); color: white; }
+.btn-full { width: 90%; display: block; margin: 10px auto; }
+input[type=text], input[type=password], input[type=number] {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: 2px solid rgba(255,215,0,0.4);
+    background: rgba(255,255,255,0.1);
+    color: white;
+    font-size: 1.1em;
+    margin: 10px 0;
+    outline: none;
+    text-align: center;
+}
+input::placeholder { color: #aaa; }
+input:focus { border-color: #FFD700; }
+.game-code {
+    font-size: 3.5em;
+    font-weight: bold;
+    color: #FFD700;
+    letter-spacing: 8px;
+    text-shadow: 0 0 20px #FFD700;
+    margin: 10px 0;
+    font-family: monospace;
+}
+.ticket-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px auto;
+}
+.ticket-table td {
+    border: 1px solid rgba(255,215,0,0.3);
+    text-align: center;
+    padding: 10px 2px;
+    font-weight: bold;
+    font-size: 1em;
+    border-radius: 4px;
+}
+.td-blank { background: rgba(0,0,0,0.4); }
+.td-normal { background: rgba(255,255,255,0.1); color: white; }
+.td-ticked {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: black;
+    border-radius: 8px;
+}
+.td-manual-hit {
+    background: linear-gradient(135deg, #52b788, #2d6a4f);
+    color: white;
+    cursor: pointer;
+}
+.win-banner {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    color: black;
+    padding: 15px;
+    border-radius: 15px;
+    font-size: 1.2em;
+    font-weight: bold;
+    margin: 10px 0;
+    animation: pulse 0.8s infinite;
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+.number-display {
+    font-size: 5em;
+    color: #FFD700;
+    font-weight: bold;
+    text-shadow: 0 0 30px #FFD700;
+    margin: 10px 0;
+}
+.called-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    margin: 10px auto;
+    max-width: 360px;
+}
+.num-ball {
+    width: 33px;
+    height: 33px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.78em;
+    font-weight: bold;
+}
+.ball-called { background: linear-gradient(135deg, #FFD700, #FFA500); color: black; }
+.ball-pending { background: rgba(255,255,255,0.08); color: #666; }
+.player-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 10px;
+    margin: 5px 0;
+    font-size: 0.9em;
+}
+.stats-row {
+    display: flex;
+    justify-content: space-around;
+    margin: 10px 0;
+}
+.stat-box {
+    background: rgba(255,255,255,0.1);
+    padding: 8px 15px;
+    border-radius: 10px;
+    font-size: 0.9em;
+    text-align: center;
+}
+.stat-box span { color: #FFD700; font-size: 1.3em; font-weight: bold; display: block; }
+.winner-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 10px;
+    margin: 5px 0;
+}
+.error { color: #FF4444; margin: 5px 0; font-size: 0.95em; }
+</style>
+'''
 
 @app.route('/')
-def home():
-    return '''
-<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>🐍 Snake Game by Shannu</title>
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            background: linear-gradient(135deg, #0d2b0d, #1a4a1a, #0d3320);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: Arial, sans-serif;
-            color: white;
-        }
-        h1 { font-size: 1.8em; color: #7FFF00; text-shadow: 0 0 10px #00FF00; margin-bottom: 5px; }
-        .subtitle { font-size: 0.8em; color: #aaa; margin-bottom: 10px; }
-        #scoreBoard { display: flex; gap: 20px; margin-bottom: 8px; font-size: 1em; }
-        .score-item { background: rgba(0,0,0,0.4); padding: 5px 15px; border-radius: 20px; color: #FFD700; font-weight: bold; }
-        canvas { border: 3px solid #7FFF00; border-radius: 10px; box-shadow: 0 0 20px #00FF0055; display: block; }
-        .controls { display: grid; grid-template-columns: repeat(3, 65px); gap: 8px; margin-top: 15px; }
-        .btn {
-            background: rgba(0,100,0,0.6);
-            border: 2px solid #7FFF00;
-            color: #7FFF00;
-            font-size: 1.6em;
-            padding: 15px;
-            border-radius: 10px;
-            cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-        }
-        .btn:active { background: #7FFF00; color: black; }
-        #settingsScreen {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            z-index: 100;
-        }
-        .settings-box {
-            background: linear-gradient(135deg, #1a3a1a, #0d2b0d);
-            border: 2px solid #7FFF00;
-            border-radius: 20px;
-            padding: 30px;
-            text-align: center;
-            width: 280px;
-        }
-        .settings-box h2 { color: #7FFF00; font-size: 1.5em; margin-bottom: 20px; }
-        .speed-btns { display: flex; gap: 10px; justify-content: center; margin: 15px 0; }
-        .speed-btn {
-            padding: 10px 20px;
-            border: 2px solid #7FFF00;
-            background: transparent;
-            color: #7FFF00;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 1em;
-            touch-action: manipulation;
-        }
-        .speed-btn.active { background: #7FFF00; color: black; font-weight: bold; }
-        #startBtn {
-            margin-top: 20px; padding: 15px 40px;
-            background: #7FFF00; color: black;
-            border: none; border-radius: 25px;
-            font-size: 1.2em; font-weight: bold;
-            cursor: pointer; touch-action: manipulation;
-        }
-        #starTimer { width: 300px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 5px; margin: 5px 0; display: none; }
-        #starTimerBar { height: 100%; background: #FFD700; border-radius: 5px; transition: width 0.1s linear; }
-        #pauseBtn {
-            margin-top: 10px; padding: 8px 25px;
-            background: rgba(255,255,255,0.1);
-            border: 2px solid #7FFF00; color: #7FFF00;
-            border-radius: 20px; font-size: 1em;
-            cursor: pointer; touch-action: manipulation;
-        }
-    </style>
-</head>
-<body>
+def welcome():
+    return f'''<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shannu Housie 🎰</title>
+{STYLES}
+</head><body>
+<div class="container">
+    <div style="font-size:3em; margin:15px 0;">🎰</div>
+    <div class="logo">Shannu Housie</div>
+    <div class="subtitle">🪙 Family Housie Game 🪙</div>
+    <div style="font-size:2em; margin:10px 0;">👨‍👩‍👧‍👦</div>
 
-<div id="settingsScreen">
-    <div class="settings-box">
-        <h2>🐍 Snake Game</h2>
-        <p style="color:#aaa; margin-bottom:15px;">by Shannu</p>
-        <p style="color:#7FFF00; margin-bottom:10px;">Select Speed:</p>
-        <div class="speed-btns">
-            <button class="speed-btn" onclick="setSpeed(\'easy\', this)">Easy</button>
-            <button class="speed-btn active" onclick="setSpeed(\'medium\', this)">Medium</button>
-            <button class="speed-btn" onclick="setSpeed(\'hard\', this)">Hard</button>
-        </div>
-        <p style="color:#aaa; font-size:0.85em; margin-top:10px;">
-            ⭐ Every 5 foods = Bonus Star!<br>
-            Grab it fast for more points!
-        </p>
-        <button id="startBtn" onclick="startGame()">▶️ Start Game</button>
+    <div class="card">
+        <a href="/host-login" class="btn btn-gold btn-full">🎯 Host Login</a>
+        <div style="color:#aaa; margin:10px 0;">— or —</div>
+        <form method="POST" action="/join-code">
+            <p style="color:#FFD700; margin-bottom:8px;">🎮 Join with Game Code:</p>
+            <input type="text" name="code" placeholder="Enter 5-digit code" maxlength="5">
+            <button type="submit" class="btn btn-purple btn-full">🎫 Join Game</button>
+        </form>
+    </div>
+
+    <div style="color:#555; font-size:0.8em; margin-top:15px;">
+        Shannu Housie Game v2.0 🎰
     </div>
 </div>
+</body></html>'''
 
-<h1>🐍 Snake Game</h1>
-<p class="subtitle">Created by Shannu 🌿</p>
-<div id="scoreBoard">
-    <div class="score-item">Score: <span id="scoreVal">0</span></div>
-    <div class="score-item">Best: <span id="bestVal">0</span></div>
+@app.route('/host-login', methods=['GET', 'POST'])
+def host_login():
+    error = ''
+    if request.method == 'POST':
+        pwd = request.form.get('password', '')
+        max_p = request.form.get('max_players', '0')
+        host_play = request.form.get('host_play', 'no')
+        if pwd == HOST_PASSWORD:
+            try:
+                max_p = int(max_p)
+                if 2 <= max_p <= 20:
+                    game_state['max_players'] = max_p
+                    game_state['game_code'] = str(random.randint(10000, 99999))
+                    game_state['called_numbers'] = []
+                    game_state['players'] = {}
+                    game_state['game_started'] = False
+                    game_state['game_over'] = False
+                    game_state['tickets'] = {}
+                    game_state['winners'] = {
+                        'jaldi5': None, 'line1': None,
+                        'line2': None, 'line3': None, 'housie': None
+                    }
+                    session['role'] = 'host'
+
+                    if host_play == 'yes':
+                        ticket_num = 1
+                        game_state['tickets'][ticket_num] = generate_ticket()
+                        game_state['players']['Host'] = {
+                            'ticket': ticket_num,
+                            'ready': False,
+                            'tick_mode': 'auto',
+                            'manual_ticked': []
+                        }
+                        session['player_name'] = 'Host'
+
+                    return redirect('/host')
+                else:
+                    error = 'Players must be 2-20!'
+            except:
+                error = 'Enter valid number!'
+        else:
+            error = '❌ Wrong password!'
+
+    return f'''<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Host Login 🎯</title>
+{STYLES}
+</head><body>
+<div class="container">
+    <div style="font-size:2.5em; margin:10px 0;">🎯</div>
+    <div class="logo" style="font-size:1.5em;">Host Login</div>
+
+    <div class="card">
+        <form method="POST">
+            <p style="color:#FFD700; margin-bottom:5px;">🔐 Password:</p>
+            <input type="password" name="password" placeholder="Enter host password">
+
+            <p style="color:#FFD700; margin:15px 0 5px;">👥 Number of Players (2-20):</p>
+            <input type="number" name="max_players" placeholder="Ex: 8" min="2" max="20">
+
+            <p style="color:#FFD700; margin:15px 0 8px;">🎮 Host play చేస్తారా?</p>
+            <div style="display:flex; gap:10px; justify-content:center; margin-bottom:10px;">
+                <label style="background:rgba(255,255,255,0.1); padding:10px 15px; border-radius:10px; cursor:pointer;">
+                    <input type="radio" name="host_play" value="yes"> ✅ Yes
+                </label>
+                <label style="background:rgba(255,255,255,0.1); padding:10px 15px; border-radius:10px; cursor:pointer;">
+                    <input type="radio" name="host_play" value="no" checked> ❌ No
+                </label>
+            </div>
+
+            {"<p class='error'>" + error + "</p>" if error else ""}
+            <button type="submit" class="btn btn-gold btn-full" style="margin-top:10px;">
+                🚀 Create Game
+            </button>
+        </form>
+    </div>
+    <a href="/" style="color:#aaa; font-size:0.9em;">← Back</a>
 </div>
-<div id="starTimer"><div id="starTimerBar" style="width:100%"></div></div>
-<canvas id="canvas" width="300" height="300"></canvas>
+</body></html>'''
 
-<div class="controls">
-    <div></div>
-    <button class="btn" id="btnUp">⬆️</button>
-    <div></div>
-    <button class="btn" id="btnLeft">⬅️</button>
-    <button class="btn" id="btnDown">⬇️</button>
-    <button class="btn" id="btnRight">➡️</button>
+@app.route('/join-code', methods=['POST'])
+def join_code():
+    code = request.form.get('code', '').strip()
+    if code == game_state.get('game_code'):
+        session['verified_code'] = code
+        return redirect('/player-login')
+    else:
+        return f'''<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wrong Code</title>
+{STYLES}
+</head><body>
+<div class="container">
+    <div style="font-size:3em; margin:30px 0;">❌</div>
+    <div class="logo" style="color:#FF4444;">Wrong Code!</div>
+    <p style="color:#aaa; margin:15px 0;">Code తప్పుగా ఉంది. మళ్ళీ try చేయండి.</p>
+    <a href="/" class="btn btn-gold">← Try Again</a>
 </div>
-<button id="pauseBtn" style="display:none" onclick="togglePause()">⏸ Pause</button>
+</body></html>'''
 
-<script>
-    const canvas = document.getElementById(\'canvas\');
-    const ctx = canvas.getContext(\'2d\');
-    const box = 20;
-    const GRID = 15;
+@app.route('/player-login', methods=['GET', 'POST'])
+def player_login():
+    if session.get('verified_code') != game_state.get('game_code'):
+        return redirect('/')
 
-    let snake, food, star, dx, dy, score, bestScore = 0;
-    let gameLoop, foodCount, starActive, starInterval;
-    let paused = false;
-    let speed = 150;
-    let speedMultiplier = 1;
-
-    // Button controls - touch friendly
-    function setupButtons() {
-        const buttons = {
-            \'btnUp\':    () => { if(dy === 0) { dx=0; dy=-1; } },
-            \'btnDown\':  () => { if(dy === 0) { dx=0; dy=1; } },
-            \'btnLeft\':  () => { if(dx === 0) { dx=-1; dy=0; } },
-            \'btnRight\': () => { if(dx === 0) { dx=1; dy=0; } }
-        };
-        Object.entries(buttons).forEach(([id, fn]) => {
-            const btn = document.getElementById(id);
-            btn.addEventListener(\'touchstart\', (e) => { e.preventDefault(); fn(); }, {passive: false});
-            btn.addEventListener(\'mousedown\', fn);
-        });
-    }
-
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    function playSound(freq, duration, type=\'sine\') {
-        try {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = freq;
-            osc.type = type;
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
-        } catch(e) {}
-    }
-
-    function playStarSound() {
-        playSound(880, 0.1);
-        setTimeout(() => playSound(1100, 0.1), 100);
-        setTimeout(() => playSound(1320, 0.2), 200);
-    }
-    function playEatSound() { playSound(440, 0.1, \'square\'); }
-    function playGameOverSound() {
-        playSound(200, 0.3, \'sawtooth\');
-        setTimeout(() => playSound(150, 0.5, \'sawtooth\'), 300);
-    }
-
-    function setSpeed(s, btn) {
-        document.querySelectorAll(\'.speed-btn\').forEach(b => b.classList.remove(\'active\'));
-        btn.classList.add(\'active\');
-        if(s === \'easy\') { speed = 220; speedMultiplier = 0.7; }
-        else if(s === \'medium\') { speed = 150; speedMultiplier = 1; }
-        else { speed = 80; speedMultiplier = 1.5; }
-    }
-
-    function startGame() {
-        document.getElementById(\'settingsScreen\').style.display = \'none\';
-        document.getElementById(\'pauseBtn\').style.display = \'inline-block\';
-        document.getElementById(\'pauseBtn\').innerText = \'⏸ Pause\';
-        document.getElementById(\'pauseBtn\').onclick = togglePause;
-        snake = [{x:7, y:7}];
-        dx = 1; dy = 0;
-        score = 0; foodCount = 0;
-        starActive = false; star = null;
-        paused = false;
-        placeFood();
-        updateScoreDisplay();
-        if(gameLoop) clearInterval(gameLoop);
-        if(starInterval) clearInterval(starInterval);
-        gameLoop = setInterval(update, speed);
-        setupButtons();
-    }
-
-    function placeFood() {
-        do {
-            food = { x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID) };
-        } while(snake.some(s => s.x===food.x && s.y===food.y));
-    }
-
-    function placeStar() {
-        starActive = true;
-        do {
-            star = { x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID), timeLeft: 5 };
-        } while(snake.some(s => s.x===star.x && s.y===star.y));
-
-        document.getElementById(\'starTimer\').style.display = \'block\';
-        document.getElementById(\'starTimerBar\').style.width = \'100%\';
-
-        let elapsed = 0;
-        if(starInterval) clearInterval(starInterval);
-        starInterval = setInterval(() => {
-            elapsed += 0.1;
-            star.timeLeft = 5 - elapsed;
-            document.getElementById(\'starTimerBar\').style.width = ((5-elapsed)/5*100) + \'%\';
-            if(elapsed >= 5) {
-                clearInterval(starInterval);
-                starActive = false; star = null;
-                document.getElementById(\'starTimer\').style.display = \'none\';
+    error = ''
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        tick_mode = request.form.get('tick_mode', 'auto')
+        if not name:
+            error = 'Name enter చేయండి!'
+        elif len(name) > 20:
+            error = 'Name too long! (max 20)'
+        elif game_state['max_players'] == 0:
+            error = '⏳ Host ఇంకా game set చేయలేదు!'
+        elif len(game_state['players']) >= game_state['max_players']:
+            error = '❌ Game Full!'
+        elif game_state['game_started']:
+            error = '❌ Game already started!'
+        elif name.lower() == 'host':
+            error = '❌ This name is reserved!'
+        elif name in game_state['players']:
+            error = '❌ Name already taken!'
+        else:
+            ticket_num = len(game_state['players']) + 1
+            game_state['tickets'][ticket_num] = generate_ticket()
+            game_state['players'][name] = {
+                'ticket': ticket_num,
+                'ready': False,
+                'tick_mode': tick_mode,
+                'manual_ticked': []
             }
-        }, 100);
+            session['player_name'] = name
+            session['role'] = 'player'
+            return redirect(f'/ticket/{ticket_num}')
+
+    return f'''<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Join Game 🎫</title>
+{STYLES}
+</head><body>
+<div class="container">
+    <div style="font-size:2.5em; margin:10px 0;">🎫</div>
+    <div class="logo" style="font-size:1.5em;">Join Game</div>
+    <div style="color:#52b788; margin-bottom:15px;">✅ Code Verified!</div>
+
+    <div class="card">
+        <form method="POST">
+            <p style="color:#FFD700; margin-bottom:5px;">👤 Your Name:</p>
+            <input type="text" name="name" placeholder="Enter your name" maxlength="20">
+
+            <p style="color:#FFD700; margin:15px 0 10px;">🎯 Tick Mode:</p>
+            <div style="display:flex; gap:10px; justify-content:center; margin-bottom:10px;">
+                <label style="background:rgba(255,255,255,0.1); padding:10px 15px; border-radius:10px; cursor:pointer;">
+                    <input type="radio" name="tick_mode" value="auto" checked> ✅ Auto
+                </label>
+                <label style="background:rgba(255,255,255,0.1); padding:10px 15px; border-radius:10px; cursor:pointer;">
+                    <input type="radio" name="tick_mode" value="manual"> 👆 Manual
+                </label>
+            </div>
+
+            {"<p class='error'>" + error + "</p>" if error else ""}
+            <button type="submit" class="btn btn-purple btn-full">
+                🎮 Get My Ticket!
+            </button>
+        </form>
+    </div>
+
+    <div style="color:#888; font-size:0.85em;">
+        Players: {len(game_state['players'])}/{game_state['max_players']}
+    </div>
+</div>
+</body></html>'''
+
+@app.route('/ticket/<int:num>')
+def ticket(num):
+    player_name = session.get('player_name')
+    if not player_name or player_name not in game_state['players']:
+        return redirect('/')
+
+    player = game_state['players'][player_name]
+    if player['ticket'] != num:
+        return redirect(f'/ticket/{player["ticket"]}')
+
+    ticket_data = game_state['tickets'][num]
+    called = game_state['called_numbers']
+    called_set = set(called)
+    manual_ticked = set(player.get('manual_ticked', []))
+    tick_mode = player.get('tick_mode', 'auto')
+    winners = game_state['winners']
+
+    effective_ticked = called_set if tick_mode == 'auto' else manual_ticked
+    all_nums = [n for row in ticket_data for n in row if n != 0]
+    ticked_count = sum(1 for n in all_nums if n in effective_ticked)
+
+    if ticked_count >= 5 and not winners['jaldi5']:
+        winners['jaldi5'] = player_name
+    for i, row in enumerate(ticket_data):
+        row_nums = [n for n in row if n != 0]
+        if row_nums and all(n in effective_ticked for n in row_nums):
+            key = f'line{i+1}'
+            if not winners[key]:
+                winners[key] = player_name
+    if all(n in effective_ticked for n in all_nums) and not winners['housie']:
+        winners['housie'] = player_name
+
+    ticket_html = ""
+    for row in ticket_data:
+        ticket_html += "<tr>"
+        for cell in row:
+            if cell == 0:
+                ticket_html += '<td class="td-blank"></td>'
+            elif tick_mode == 'auto' and cell in called_set:
+                ticket_html += f'<td class="td-ticked">✓{cell}</td>'
+            elif tick_mode == 'manual' and cell in manual_ticked:
+                ticket_html += f'<td class="td-ticked">✓{cell}</td>'
+            elif tick_mode == 'manual' and cell in called_set:
+                ticket_html += f'<td class="td-manual-hit" onclick="manualTick({cell})">👆{cell}</td>'
+            else:
+                ticket_html += f'<td class="td-normal">{cell}</td>'
+        ticket_html += "</tr>"
+
+    win_msg = ""
+    labels = {
+        'housie': '🎉 HOUSIE! YOU WIN! 🪙🪙🪙',
+        'line3': '🥉 3rd Line Win! 🪙',
+        'line2': '🥈 2nd Line Win! 🪙🪙',
+        'line1': '🥇 1st Line Win! 🪙',
+        'jaldi5': '⭐ Jaldi 5 Win! 🪙'
     }
+    for prize, label in labels.items():
+        if winners[prize] == player_name:
+            win_msg = f'<div class="win-banner">{label}</div>'
+            break
 
-    function getStarPoints(t) {
-        if(t >= 4.5) return 50;
-        if(t >= 3.5) return 40;
-        if(t >= 2.5) return 30;
-        if(t >= 1.5) return 20;
-        return 10;
-    }
+    last_num = called[-1] if called else "-"
+    game_status = "✅ Game Running!" if game_state['game_started'] else "⏳ Waiting to start..."
+    ready = player['ready']
 
-    function updateScoreDisplay() {
-        document.getElementById(\'scoreVal\').innerText = score;
-        document.getElementById(\'bestVal\').innerText = bestScore;
-    }
+    voice_js = ""
+    if called and game_state['game_started']:
+        voice_js = f'''
+        var lastSpoken = localStorage.getItem('lastSpoken');
+        if(lastSpoken != '{last_num}') {{
+            localStorage.setItem('lastSpoken', '{last_num}');
+            if('speechSynthesis' in window) {{
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance("Number {last_num}");
+                msg.lang = 'en-IN';
+                msg.rate = 0.8;
+                msg.volume = 1;
+                window.speechSynthesis.speak(msg);
+            }}
+        }}'''
 
-    function update() {
-        if(paused) return;
-        const head = {x: snake[0].x+dx, y: snake[0].y+dy};
-        if(head.x<0||head.x>=GRID||head.y<0||head.y>=GRID) { gameOver(); return; }
-        if(snake.some(s => s.x===head.x && s.y===head.y)) { gameOver(); return; }
-        snake.unshift(head);
+    is_host = session.get('role') == 'host'
 
-        if(starActive && star && head.x===star.x && head.y===star.y) {
-            score += Math.round(getStarPoints(star.timeLeft) * speedMultiplier);
-            playStarSound();
-            clearInterval(starInterval);
-            starActive = false; star = null;
-            document.getElementById(\'starTimer\').style.display = \'none\';
-            updateScoreDisplay();
-            snake.pop();
-        } else if(head.x===food.x && head.y===food.y) {
-            score += Math.round(10 * speedMultiplier);
-            foodCount++;
-            playEatSound();
-            placeFood();
-            if(foodCount % 5 === 0) placeStar();
-            updateScoreDisplay();
-        } else {
-            snake.pop();
-        }
-        if(score > bestScore) bestScore = score;
-        draw();
-    }
+    return f'''<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🎫 {player_name}</title>
+<meta http-equiv="refresh" content="3">
+{STYLES}
+</head><body>
+<div class="container">
+    <div class="logo" style="font-size:1.3em;">🎫 {player_name}</div>
+    <div style="color:#c9a0ff; font-size:0.8em; margin-bottom:5px;">
+        {game_status} | {tick_mode.upper()} mode
+    </div>
 
-    function draw() {
-        ctx.fillStyle = \'#0a1a0a\';
-        ctx.fillRect(0, 0, 300, 300);
+    {"<div class='number-display'>" + str(last_num) + "</div>" if game_state['game_started'] else ""}
 
-        ctx.fillStyle = \'rgba(100,200,100,0.08)\';
-        for(let i=0;i<GRID;i++) for(let j=0;j<GRID;j++) {
-            ctx.beginPath();
-            ctx.arc(i*box+box/2, j*box+box/2, 1, 0, Math.PI*2);
-            ctx.fill();
-        }
+    {win_msg}
 
-        // Food
-        ctx.fillStyle = \'#FF3333\';
-        ctx.beginPath();
-        ctx.arc(food.x*box+box/2, food.y*box+box/2, box/2-2, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = \'#00AA00\';
-        ctx.fillRect(food.x*box+box/2-1, food.y*box+1, 2, 4);
+    <table class="ticket-table">{ticket_html}</table>
 
-        // Star
-        if(starActive && star) drawStar(star.x*box+box/2, star.y*box+box/2, 5, box/2-1, box/4);
+    {"" if game_state['game_started'] else
+        ("<form method='POST' action='/ready'><button type='submit' class='btn btn-green btn-full'>✅ I am Ready!</button></form>"
+         if not ready else
+         "<div class='card' style='color:#52b788; padding:12px;'>✅ Ready! Waiting for others...</div>")}
 
-        // Snake
-        const colors = [\'#FF6B6B\',\'#FFD93D\',\'#6BCB77\',\'#4D96FF\',\'#C77DFF\'];
-        snake.forEach((s, i) => {
-            ctx.fillStyle = i===0 ? \'#00FF00\' : colors[i % colors.length];
-            ctx.beginPath();
-            ctx.roundRect(s.x*box+1, s.y*box+1, box-2, box-2, 4);
-            ctx.fill();
-        });
+    {"<a href='/host' class='btn btn-gold' style='margin-top:5px; font-size:0.9em;'>🎯 Host Panel</a>" if is_host else ""}
 
-        // Eyes
-        ctx.fillStyle = \'black\';
-        let ex = snake[0].x*box + (dx===1 ? box-5 : dx===-1 ? 3 : box/2-3);
-        let ey = snake[0].y*box + (dy===1 ? box-5 : dy===-1 ? 3 : box/2-3);
-        ctx.beginPath(); ctx.arc(ex, ey, 2, 0, Math.PI*2); ctx.fill();
-    }
+    <div class="stats-row" style="margin-top:10px;">
+        <div class="stat-box">Called<span>{len(called)}</span></div>
+        <div class="stat-box">Left<span>{90-len(called)}</span></div>
+        <div class="stat-box">Ticked<span>{ticked_count}</span></div>
+    </div>
 
-    function drawStar(cx, cy, spikes, outerR, innerR) {
-        let rot = Math.PI/2*3, step = Math.PI/spikes;
-        ctx.beginPath(); ctx.moveTo(cx, cy-outerR);
-        for(let i=0;i<spikes;i++) {
-            ctx.lineTo(cx+Math.cos(rot)*outerR, cy+Math.sin(rot)*outerR); rot+=step;
-            ctx.lineTo(cx+Math.cos(rot)*innerR, cy+Math.sin(rot)*innerR); rot+=step;
-        }
-        ctx.closePath();
-        ctx.fillStyle = \'#FFD700\'; ctx.fill();
-        ctx.strokeStyle = \'#FFA500\'; ctx.lineWidth=1; ctx.stroke();
-    }
-
-    function togglePause() {
-        paused = !paused;
-        document.getElementById(\'pauseBtn\').innerText = paused ? \'▶️ Resume\' : \'⏸ Pause\';
-    }
-
-    function gameOver() {
-        clearInterval(gameLoop); clearInterval(starInterval);
-        if(score > bestScore) bestScore = score;
-        playGameOverSound();
-
-        ctx.fillStyle = \'rgba(0,0,0,0.75)\'; ctx.fillRect(0,0,300,300);
-        ctx.fillStyle = \'#FF4444\'; ctx.font = \'bold 28px Arial\'; ctx.textAlign = \'center\';
-        ctx.fillText(\'Game Over! 💀\', 150, 110);
-        ctx.fillStyle = \'#FFD700\'; ctx.font = \'20px Arial\';
-        ctx.fillText(\'Score: \' + score, 150, 150);
-        ctx.fillStyle = \'#7FFF00\'; ctx.font = \'16px Arial\';
-        ctx.fillText(\'Best: \' + bestScore, 150, 180);
-        ctx.fillStyle = \'white\'; ctx.font = \'14px Arial\';
-        ctx.fillText(\'Tap Restart to play again\', 150, 220);
-
-        const pb = document.getElementById(\'pauseBtn\');
-        pb.innerText = \'🔄 Restart\';
-        pb.onclick = () => {
-            document.getElementById(\'settingsScreen\').style.display = \'flex\';
-            pb.style.display = \'none\';
-        };
-    }
-
-    document.addEventListener(\'keydown\', e => {
-        if(e.key===\'ArrowLeft\' && dx!==1) { dx=-1; dy=0; }
-        if(e.key===\'ArrowRight\' && dx!==-1) { dx=1; dy=0; }
-        if(e.key===\'ArrowUp\' && dy!==1) { dx=0; dy=-1; }
-        if(e.key===\'ArrowDown\' && dy!==-1) { dx=0; dy=1; }
-        if(e.key===\' \') togglePause();
-    });
-
-    let touchX, touchY;
-    canvas.addEventListener(\'touchstart\', e => { touchX=e.touches[0].clientX; touchY=e.touches[0].clientY; }, {passive:true});
-    canvas.addEventListener(\'touchend\', e => {
-        let tx=e.changedTouches[0].clientX-touchX;
-        let ty=e.changedTouches[0].clientY-touchY;
-        if(Math.abs(tx)>Math.abs(ty)) {
-            if(tx>0 && dx!==1) { dx=1; dy=0; }
-            else if(tx<0 && dx!==-1) { dx=-1; dy=0; }
-        } else {
-            if(ty>0 && dy!==1) { dx=0; dy=1; }
-            else if(ty<0 && dy!==-1) { dx=0; dy=-1; }
-        }
-    }, {passive:true});
+    <div style="color:#555; font-size:0.72em; margin-top:8px; word-break:break-all;">
+        Last 10: {", ".join(map(str, called[-10:])) if called else "None"}
+    </div>
+</div>
+<script>
+window.onload = function() {{ {voice_js} }}
+function manualTick(num) {{
+    fetch('/manual-tick/' + num, {{method:'POST'}})
+    .then(() => location.reload());
+}}
 </script>
-</body>
-</html>
-'''
+</body></html>'''
+
+@app.route('/ready', methods=['POST'])
+def ready():
+    name = session.get('player_name')
+    if name and name in game_state['players']:
+        game_state['players'][name]['ready'] = True
+        return redirect(f'/ticket/{game_state["players"][name]["ticket"]}')
+    return redirect('/')
+
+@app.route('/manual-tick/<int:num>', methods=['POST'])
+def manual_tick(num):
+    name = session.get('player_name')
+    if name and name in game_state['players']:
+        if num in set(game_state['called_numbers']):
+            mt = game_state['players'][name]['manual_ticked']
+            if num not in mt:
+                mt.append(num)
+    return 'ok'
+
+@app.route('/host')
+def host():
+    if session.get('role') != 'host':
+        return redirect('/')
+
+    called = game_state['called_numbers']
+    remaining = [n for n in range(1, 91) if n not in called]
+    players = game_state['players']
+    winners = game_state['winners']
+    ready_count = sum(1 for p in players.values() if p['ready'])
+    total_players = len(players)
+    max_p = game_state['max_players']
+    all_ready = (total_players == max_p and ready_count == total_players and total_players > 0)
+
+    players_html = ""
+    for name, data in players.items():
+        status = "✅" if data['ready'] else "⏳"
+        players_html += f'''
+        <div class="player-item">
+            <span>{status} {name}</span>
+            <span style="color:#aaa; font-size:0.8em;">#{data["ticket"]} | {data["tick_mode"]}</span>
+        </div>'''
+
+    winner_html = ""
+    labels = {
+        'jaldi5': '⭐ Jaldi 5',
+        'line1': '🥇 1st Line',
+        'line2': '🥈 2nd Line',
+        'line3': '🥉 3rd Line',
+        'housie': '🎉 Full House'
+    }
+    for prize, label in labels.items():
+        if winners[prize]:
+            winner_html += f'''
+            <div class="winner-row">
+                <span>{label}</span>
+                <span style="color:#FFD700;">🏆 {winners[prize]}</span>
+            </div>'''
+
+    last_num = called[-1] if called else "-"
+    game_code = game_state.get('game_code', '-----')
+
+    return f'''<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Host Panel 🎯</title>
+{STYLES}
+</head><body>
+<div class="container">
+    <div class="logo" style="font-size:1.4em;">🎯 Host Panel</div>
+
+    <div class="card" style="padding:15px;">
+        <p style="color:#aaa; font-size:0.85em; margin-bottom:5px;">🎮 Game Code — Share with players:</p>
+        <div class="game-code">{game_code}</div>
+        <p style="color:#aaa; font-size:0.75em;">Players: enter this code at home page</p>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-box">Players<span>{total_players}/{max_p}</span></div>
+        <div class="stat-box">Ready<span>{ready_count}</span></div>
+        <div class="stat-box">Called<span>{len(called)}</span></div>
+    </div>
+
+    {"<div class='win-banner'>🎉 All Players Ready!</div>" if all_ready and not game_state['game_started'] else ""}
+
+    <div class="number-display">{last_num}</div>
+
+    {"<form method='POST' action='/call'><button type='submit' class='btn btn-gold btn-full'>🎲 Call Number</button></form>"
+     if remaining and not game_state['game_over'] else ""}
+
+    {"<div class='win-banner'>🎉 All 90 Numbers Called!</div>" if not remaining else ""}
+
+    <form method="POST" action="/end-game">
+        <button type="submit" class="btn btn-red btn-full">🚪 End Game</button>
+    </form>
+
+    {f"<div class='card'><h3 style='color:#FFD700; margin-bottom:10px;'>🏆 Winners</h3>{winner_html}</div>" if winner_html else ""}
+
+    <div class="card">
+        <p style="color:#FFD700; margin-bottom:8px;">
+            👥 Players ({total_players}/{max_p})
+        </p>
+        {players_html if players_html else "<p style='color:#666;'>No players yet...</p>"}
+    </div>
+
+    <div class="called-grid">
+        {"".join(f'<div class="num-ball {"ball-called" if n in called else "ball-pending"}">{n}</div>' for n in range(1, 91))}
+    </div>
+
+    <br>
+    <a href="/reset" style="color:#FF4444; font-size:0.9em;">🔄 Reset / New Game</a>
+</div>
+</body></html>'''
+
+@app.route('/call', methods=['POST'])
+def call_number():
+    if session.get('role') != 'host':
+        return redirect('/')
+    remaining = [n for n in range(1, 91) if n not in game_state['called_numbers']]
+    if remaining:
+        num = random.choice(remaining)
+        game_state['called_numbers'].append(num)
+        game_state['game_started'] = True
+    return redirect('/host')
+
+@app.route('/end-game', methods=['POST'])
+def end_game():
+    if session.get('role') != 'host':
+        return redirect('/')
+    game_state['game_over'] = True
+    return redirect('/game-over')
+
+@app.route('/game-over')
+def game_over_page():
+    winners = game_state['winners']
+    labels = {
+        'jaldi5': '⭐ Jaldi 5',
+        'line1': '🥇 1st Line',
+        'line2': '🥈 2nd Line',
+        'line3': '🥉 3rd Line',
+        'housie': '🎉 Full House'
+    }
+    winner_html = ""
+    for prize, label in labels.items():
+        if winners[prize]:
+            winner_html += f'''
+            <div class="winner-row" style="margin:8px 0;">
+                <span>{label}</span>
+                <span style="color:#FFD700;">🏆 {winners[prize]}</span>
+            </div>'''
+
+    return f'''<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Over 🎰</title>
+{STYLES}
+</head><body>
+<div class="container">
+    <div style="font-size:3em; margin:20px 0;">🎰</div>
+    <div class="logo">Game Over!</div>
+    <div style="color:#c9a0ff; margin-bottom:20px;">
+        Thanks for playing Shannu Housie! 🪙
+    </div>
+
+    <div class="card">
+        <h3 style="color:#FFD700; margin-bottom:15px;">🏆 Final Winners</h3>
+        {winner_html if winner_html else "<p style='color:#666;'>No winners recorded</p>"}
+    </div>
+
+    <div style="font-size:2em; margin:15px 0;">🪙🎫🎰🎫🪙</div>
+    <div style="color:#555; font-size:0.8em;">Shannu Housie Game v2.0</div>
+
+    <a href="/reset" class="btn btn-gold" style="margin-top:20px; display:inline-block;">
+        🔄 Play Again
+    </a>
+</div>
+</body></html>'''
+
+@app.route('/reset')
+def reset():
+    game_state['called_numbers'] = []
+    game_state['players'] = {}
+    game_state['max_players'] = 0
+    game_state['game_started'] = False
+    game_state['game_over'] = False
+    game_state['game_code'] = None
+    game_state['tickets'] = {}
+    game_state['winners'] = {
+        'jaldi5': None, 'line1': None,
+        'line2': None, 'line3': None, 'housie': None
+    }
+    session.clear()
+    return redirect('/')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
