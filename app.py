@@ -1,123 +1,171 @@
-from flask import Flask, request
+
+from flask import Flask
 
 app = Flask(__name__)
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def home():
-    show = False
-
-    if request.method == 'POST':
-        name = request.form.get('name')
-        if name and name.lower() == "chitti":
-            show = True
-
-    return f"""
-    <html>
-    <head>
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Snake Game 🐍</title>
     <style>
-        body {{
-            text-align:center;
-            font-family:Arial;
-            background: linear-gradient(to right, pink, lavender);
-            overflow:hidden;
-        }}
-
-        .box {{
-            background:white;
-            padding:30px;
-            border-radius:20px;
-            width:300px;
-            margin:auto;
-            margin-top:100px;
-            box-shadow:0px 0px 10px gray;
-            position:relative;
-            z-index:2;
-        }}
-
-        input {{
-            padding:10px;
-            width:80%;
-            border-radius:10px;
-        }}
-
-        button {{
-            padding:10px 20px;
-            margin-top:10px;
-            background:pink;
-            color:white;
-            border:none;
-            border-radius:10px;
-        }}
-
-        .rain {{
-            position:fixed;
-            top:0;
-            width:100%;
-            height:100%;
-            pointer-events:none;
-        }}
-
-        .flower {{
-            position:absolute;
-            font-size:25px;
-            animation: fall linear infinite;
-        }}
-
-        @keyframes fall {{
-            0% {{ transform: translateY(-100px); }}
-            100% {{ transform: translateY(100vh); }}
-        }}
-
-        .result {{
-            font-size:28px;
-            margin-top:20px;
-            animation: pop 1s infinite alternate;
-        }}
-
-        @keyframes pop {{
-            from {{ transform: scale(1); }}
-            to {{ transform: scale(1.2); }}
-        }}
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: Arial;
+            color: white;
+        }
+        h1 { font-size: 2em; margin-bottom: 10px; }
+        #score { font-size: 1.5em; margin-bottom: 10px; color: #FFD700; }
+        canvas {
+            border: 3px solid #FFD700;
+            border-radius: 10px;
+            background: #0a0a1a;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            gap: 5px;
+            margin-top: 15px;
+        }
+        .btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .btn:active { background: #FFD700; color: black; }
+        #startBtn {
+            margin-top: 15px;
+            padding: 12px 30px;
+            background: #FFD700;
+            color: black;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
-    </head>
+</head>
+<body>
+    <h1>🐍 Snake Game</h1>
+    <div id="score">Score: 0</div>
+    <canvas id="canvas" width="300" height="300"></canvas>
+    <div class="controls">
+        <div></div>
+        <button class="btn" onclick="changeDir(0,-1)">⬆️</button>
+        <div></div>
+        <button class="btn" onclick="changeDir(-1,0)">⬅️</button>
+        <button class="btn" onclick="changeDir(0,1)">⬇️</button>
+        <button class="btn" onclick="changeDir(1,0)">➡️</button>
+    </div>
+    <button id="startBtn" onclick="startGame()">▶️ Start</button>
 
-    <body>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const box = 20;
+    let snake, food, dx, dy, score, gameLoop;
 
-        <div class="box">
-            <h1>🌸 Chitti Magic 🌸</h1>
+    function startGame() {
+        snake = [{x:7, y:7}];
+        dx = 1; dy = 0;
+        score = 0;
+        placeFood();
+        document.getElementById('score').innerText = 'Score: 0';
+        if(gameLoop) clearInterval(gameLoop);
+        gameLoop = setInterval(update, 150);
+        document.getElementById('startBtn').innerText = '🔄 Restart';
+    }
 
-            <form method="POST">
-                <input name="name" placeholder="Enter name...">
-                <br>
-                <button>✨ Show Magic</button>
-            </form>
+    function placeFood() {
+        food = {
+            x: Math.floor(Math.random() * 15),
+            y: Math.floor(Math.random() * 15)
+        };
+    }
 
-            <div class="result">
-                {"💖✨🌸🌷💐🌺😍🥰💃👑🌈✨💖" if show else ""}
-            </div>
-        </div>
+    function update() {
+        const head = {x: snake[0].x + dx, y: snake[0].y + dy};
 
-        {"<div class='rain' id='rain'></div>" if show else ""}
+        if(head.x < 0 || head.x >= 15 || head.y < 0 || head.y >= 15) {
+            gameOver(); return;
+        }
+        if(snake.some(s => s.x === head.x && s.y === head.y)) {
+            gameOver(); return;
+        }
 
-        {"<audio autoplay loop><source src='https://www.soundjay.com/human/applause-8.mp3'></audio>" if show else ""}
+        snake.unshift(head);
 
-        <script>
-        {"let rain = document.getElementById('rain');\
-        let flowers = ['🌸','🌷','💐','🌹','🌺','🌼','🌻'];\
-        for(let i=0;i<50;i++){\
-            let f = document.createElement('div');\
-            f.className='flower';\
-            f.innerText = flowers[Math.floor(Math.random()*flowers.length)];\
-            f.style.left = Math.random()*100+'%';\
-            f.style.animationDuration = (3+Math.random()*5)+'s';\
-            rain.appendChild(f);\
-        }" if show else ""}
-        </script>
+        if(head.x === food.x && head.y === food.y) {
+            score += 10;
+            document.getElementById('score').innerText = 'Score: ' + score;
+            placeFood();
+        } else {
+            snake.pop();
+        }
 
-    </body>
-    </html>
-    """
+        draw();
+    }
+
+    function draw() {
+        ctx.fillStyle = '#0a0a1a';
+        ctx.fillRect(0, 0, 300, 300);
+
+        // Food
+        ctx.fillStyle = '#FF4444';
+        ctx.beginPath();
+        ctx.arc(food.x * box + box/2, food.y * box + box/2, box/2 - 2, 0, Math.PI*2);
+        ctx.fill();
+
+        // Snake
+        snake.forEach((s, i) => {
+            ctx.fillStyle = i === 0 ? '#00FF00' : '#00CC00';
+            ctx.fillRect(s.x * box + 1, s.y * box + 1, box - 2, box - 2);
+        });
+    }
+
+    function changeDir(x, y) {
+        if(x !== 0 && dx !== 0) return;
+        if(y !== 0 && dy !== 0) return;
+        dx = x; dy = y;
+    }
+
+    function gameOver() {
+        clearInterval(gameLoop);
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(0, 0, 300, 300);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Over!', 150, 130);
+        ctx.font = '20px Arial';
+        ctx.fillText('Score: ' + score, 150, 170);
+    }
+
+    // Keyboard support
+    document.addEventListener('keydown', e => {
+        if(e.key === 'ArrowLeft') changeDir(-1, 0);
+        if(e.key === 'ArrowRight') changeDir(1, 0);
+        if(e.key === 'ArrowUp') changeDir(0, -1);
+        if(e.key === 'ArrowDown') changeDir(0, 1);
+    });
+</script>
+</body>
+</html>
+'''
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-
