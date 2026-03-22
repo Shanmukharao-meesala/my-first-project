@@ -1,10 +1,10 @@
-from flask import Flask, redirect, request, session, jsonify
+from flask import Flask, redirect, request, session
 import random
 
 app = Flask(__name__)
 app.secret_key = 'shannuhousie2024'
 
-HOST_PASSWORD = "Shannu@0987"
+HOST_PASSWORD = "0987"
 
 game_state = {
     'tickets': {},
@@ -16,11 +16,11 @@ game_state = {
     'game_over': False,
     'game_code': None,
     'prizes': {
-        'jaldi5': 'Winner!',
-        'line1': 'Winner!',
-        'line2': 'Winner!',
-        'line3': 'Winner!',
-        'housie': 'Winner!'
+        'jaldi5': '',
+        'line1': '',
+        'line2': '',
+        'line3': '',
+        'housie': ''
     },
     'winners': {
         'jaldi5': None,
@@ -68,12 +68,8 @@ STYLES = '''
 * { margin:0; padding:0; box-sizing:border-box; }
 
 @keyframes float {
-    0%,100% { transform: translateY(0px) rotate(0deg); opacity:0.3; }
-    50% { transform: translateY(-25px) rotate(15deg); opacity:0.5; }
-}
-@keyframes fall {
-    0% { transform: translateY(-50px) rotate(0deg); opacity:0.8; }
-    100% { transform: translateY(110vh) rotate(720deg); opacity:0; }
+    0%,100% { transform: translateY(0px) rotate(0deg); opacity:0.2; }
+    50% { transform: translateY(-20px) rotate(10deg); opacity:0.35; }
 }
 @keyframes pulse {
     0%,100% { transform: scale(1); }
@@ -84,7 +80,7 @@ STYLES = '''
     50% { text-shadow: 0 0 40px #FFD700, 0 0 80px #FFD700, 0 0 120px #FFA500; }
 }
 @keyframes slideDown {
-    from { transform: translateY(-100px); opacity:0; }
+    from { transform: translateY(-80px); opacity:0; }
     to { transform: translateY(0); opacity:1; }
 }
 @keyframes confettiFall {
@@ -92,7 +88,7 @@ STYLES = '''
     100% { transform: translateY(100vh) rotate(720deg); opacity:0; }
 }
 @keyframes winnerPop {
-    0% { transform: scale(0); opacity:0; }
+    0% { transform: scale(0.5); opacity:0; }
     60% { transform: scale(1.1); }
     100% { transform: scale(1); opacity:1; }
 }
@@ -100,10 +96,6 @@ STYLES = '''
     0% { transform: scale(0.5); opacity:0; }
     70% { transform: scale(1.2); }
     100% { transform: scale(1); opacity:1; }
-}
-@keyframes drumRoll {
-    0%,100% { transform: rotate(-5deg); }
-    50% { transform: rotate(5deg); }
 }
 
 body {
@@ -122,10 +114,6 @@ body {
 .floating-item {
     position:absolute;
     animation: float ease-in-out infinite;
-}
-.falling-item {
-    position:absolute;
-    animation: fall linear forwards;
 }
 .container {
     max-width: 440px;
@@ -164,12 +152,12 @@ body {
 }
 .btn:active { transform: scale(0.95); }
 .btn-gold { background: linear-gradient(45deg,#FFD700,#FFA500); color:black; box-shadow:0 0 15px rgba(255,215,0,0.4); }
-.btn-purple { background: linear-gradient(45deg,#7B2FBE,#9D4EDD); color:white; box-shadow:0 0 15px rgba(157,78,221,0.4); }
+.btn-purple { background: linear-gradient(45deg,#7B2FBE,#9D4EDD); color:white; }
 .btn-green { background: linear-gradient(45deg,#2d6a4f,#52b788); color:white; }
 .btn-red { background: linear-gradient(45deg,#c1121f,#e63946); color:white; }
 .btn-outline { background:transparent; border:2px solid #FFD700; color:#FFD700; }
-.btn-blue { background: linear-gradient(45deg,#1a6985,#4ECDC4); color:white; }
 .btn-full { width:90%; display:block; margin:8px auto; }
+.btn-disabled { background:#333; color:#666; cursor:not-allowed; }
 
 input[type=text],input[type=password],input[type=number] {
     width:100%; padding:13px;
@@ -198,12 +186,12 @@ input:focus { border-color:#FFD700; }
     border:2px solid rgba(255,255,255,0.1);
 }
 .ticket-label {
-    padding:5px; font-size:0.8em;
+    padding:6px; font-size:0.82em;
     font-weight:bold; letter-spacing:1px;
 }
 .ticket-table { border-collapse:collapse; width:100%; }
 .ticket-table td {
-    border:1px solid rgba(255,255,255,0.15);
+    border:1px solid rgba(255,255,255,0.12);
     text-align:center; padding:9px 2px;
     font-weight:bold; font-size:0.95em;
 }
@@ -211,12 +199,13 @@ input:focus { border-color:#FFD700; }
 .td-normal { background:rgba(20,10,40,0.8); color:white; }
 .td-ticked {
     background:linear-gradient(135deg,#FFD700,#FFA500);
-    color:black; font-size:1em;
+    color:black;
 }
 .td-manual-hit {
     background:linear-gradient(135deg,#2d0a5e,#7B2FBE);
     color:#FFD700; cursor:pointer;
     border:1px solid #FFD700 !important;
+    font-size:1.1em;
 }
 .win-banner {
     background:linear-gradient(45deg,#FFD700,#FFA500);
@@ -231,10 +220,11 @@ input:focus { border-color:#FFD700; }
     width:100%; z-index:1000;
     background:linear-gradient(45deg,#FFD700,#FFA500);
     color:black; padding:15px;
-    text-align:center; font-size:1.2em;
+    text-align:center; font-size:1.1em;
     font-weight:bold;
     animation: slideDown 0.5s ease, winnerPop 0.5s ease;
     box-shadow:0 5px 30px rgba(255,215,0,0.8);
+    cursor:pointer;
 }
 .called-grid {
     display:flex; flex-wrap:wrap;
@@ -247,21 +237,19 @@ input:focus { border-color:#FFD700; }
     justify-content:center; border-radius:50%;
     font-size:0.75em; font-weight:bold;
 }
-.ball-called { background:linear-gradient(135deg,#FFD700,#FFA500); color:black; box-shadow:0 0 6px rgba(255,215,0,0.5); }
+.ball-called { background:linear-gradient(135deg,#FFD700,#FFA500); color:black; }
 .ball-pending { background:rgba(255,255,255,0.06); color:#333; }
 .player-item {
     display:flex; justify-content:space-between;
     align-items:center; padding:8px 12px;
     background:rgba(255,255,255,0.05);
     border-radius:10px; margin:4px 0;
-    border:1px solid rgba(255,215,0,0.1);
 }
 .stats-row { display:flex; justify-content:space-around; margin:8px 0; gap:6px; }
 .stat-box {
     background:rgba(255,255,255,0.07);
     padding:7px 8px; border-radius:10px;
     font-size:0.8em; text-align:center; flex:1;
-    border:1px solid rgba(255,215,0,0.15);
 }
 .stat-box span { color:#FFD700; font-size:1.3em; font-weight:bold; display:block; }
 .winner-row {
@@ -271,13 +259,25 @@ input:focus { border-color:#FFD700; }
     border:1px solid rgba(255,215,0,0.25);
     border-radius:10px; margin:5px 0;
 }
-.rules-item {
-    display:flex; align-items:center; gap:10px;
-    padding:9px 10px;
+.info-box {
+    display:flex; align-items:flex-start; gap:10px;
+    padding:10px 12px;
     background:rgba(255,255,255,0.04);
-    border-radius:10px; margin:5px 0;
+    border-radius:10px; margin:6px 0;
     text-align:left;
     border-left:3px solid #FFD700;
+}
+.sound-toggle {
+    position:fixed; top:10px; right:10px;
+    z-index:100;
+    background:rgba(0,0,0,0.6);
+    border:1px solid rgba(255,215,0,0.4);
+    border-radius:20px;
+    padding:6px 12px;
+    font-size:0.85em;
+    cursor:pointer;
+    color:#FFD700;
+    touch-action:manipulation;
 }
 .error { color:#FF6B6B; margin:5px 0; font-size:0.9em; }
 .prize-input {
@@ -291,44 +291,113 @@ input:focus { border-color:#FFD700; }
 </style>
 '''
 
-BG_SCRIPT = '''
+BG_FLOATING = '''
 <div class="bg-canvas" id="bgCanvas"></div>
 <script>
 (function(){
     var canvas = document.getElementById('bgCanvas');
-    var items = ['🎰','🎱','⭐','🪙','🎫','🎲','✨','💫','🌟','🎮','🎯','🎊','🎉','💰'];
-    for(var i=0;i<10;i++){
+    var items = ['🎰','🎱','⭐','🪙','🎫','🎲','✨','💫','🌟','🎮','🎯','🎊'];
+    for(var i=0;i<12;i++){
         var el = document.createElement('div');
-        el.className='floating-item';
+        el.className = 'floating-item';
         el.innerText = items[Math.floor(Math.random()*items.length)];
-        el.style.cssText = 'left:'+Math.random()*90+'%;top:'+Math.random()*85+'%;font-size:'+(1+Math.random())+'em;animation-duration:'+(2+Math.random()*3)+'s;animation-delay:'+Math.random()*3+'s;';
+        el.style.cssText = 'left:'+Math.random()*90+'%;top:'+Math.random()*85+'%;font-size:'+(1+Math.random()*0.8)+'em;animation-duration:'+(2.5+Math.random()*3)+'s;animation-delay:'+Math.random()*3+'s;';
         canvas.appendChild(el);
     }
-    function drop(){
-        var el = document.createElement('div');
-        el.className='falling-item';
-        el.innerText = items[Math.floor(Math.random()*items.length)];
-        el.style.cssText = 'left:'+Math.random()*100+'%;font-size:'+(0.8+Math.random()*0.8)+'em;animation-duration:'+(4+Math.random()*5)+'s;';
-        canvas.appendChild(el);
-        setTimeout(function(){el.remove();},10000);
-    }
-    setInterval(drop,700);
 })();
+</script>
+'''
+
+SOUND_SCRIPT = '''
+<button class="sound-toggle" id="soundBtn" onclick="toggleSound()">🔊 Sound ON</button>
+<script>
+var soundOn = localStorage.getItem('soundOn') !== 'false';
+var audioCtx = null;
+
+function getCtx(){
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    return audioCtx;
+}
+
+function playBg(){
+    if(!soundOn) return;
+    try {
+        var ctx = getCtx();
+        var notes = [261,294,329,349,392,440,494,523];
+        var t = ctx.currentTime;
+        notes.forEach(function(freq,i){
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0, t+i*0.3);
+            gain.gain.linearRampToValueAtTime(0.08, t+i*0.3+0.05);
+            gain.gain.linearRampToValueAtTime(0, t+i*0.3+0.25);
+            osc.start(t+i*0.3);
+            osc.stop(t+i*0.3+0.3);
+        });
+    } catch(e){}
+}
+
+function playWin(){
+    if(!soundOn) return;
+    try {
+        var ctx = getCtx();
+        var freqs = [523,659,784,1047];
+        var t = ctx.currentTime;
+        freqs.forEach(function(freq,i){
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'triangle';
+            gain.gain.setValueAtTime(0.3, t+i*0.15);
+            gain.gain.exponentialRampToValueAtTime(0.001, t+i*0.15+0.3);
+            osc.start(t+i*0.15);
+            osc.stop(t+i*0.15+0.3);
+        });
+    } catch(e){}
+}
+
+function playTick(){
+    if(!soundOn) return;
+    try {
+        var ctx = getCtx();
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 800;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.1);
+        osc.start(); osc.stop(ctx.currentTime+0.1);
+    } catch(e){}
+}
+
+function toggleSound(){
+    soundOn = !soundOn;
+    localStorage.setItem('soundOn', soundOn);
+    document.getElementById('soundBtn').innerText = soundOn ? '🔊 Sound ON' : '🔇 Sound OFF';
+    if(soundOn) playBg();
+}
+
+document.getElementById('soundBtn').innerText = soundOn ? '🔊 Sound ON' : '🔇 Sound OFF';
 </script>
 '''
 
 CONFETTI_SCRIPT = '''
 <script>
 function launchConfetti(){
-    var colors=['#FFD700','#FF6B6B','#4ECDC4','#9D4EDD','#52b788','#FF69B4'];
-    for(var i=0;i<60;i++){
+    var colors=['#FFD700','#FF6B6B','#4ECDC4','#9D4EDD','#52b788','#FF69B4','#FFA500'];
+    for(var i=0;i<70;i++){
         (function(i){
             setTimeout(function(){
                 var el=document.createElement('div');
-                el.style.cssText='position:fixed;top:-20px;left:'+Math.random()*100+'%;width:8px;height:8px;background:'+colors[Math.floor(Math.random()*colors.length)]+';border-radius:'+Math.random()*50+'%;z-index:9999;animation:confettiFall '+(1.5+Math.random()*2)+'s linear forwards;';
+                el.style.cssText='position:fixed;top:-20px;left:'+Math.random()*100+'%;width:'+(6+Math.random()*6)+'px;height:'+(6+Math.random()*6)+'px;background:'+colors[Math.floor(Math.random()*colors.length)]+';border-radius:'+Math.random()*50+'%;z-index:9999;animation:confettiFall '+(1.5+Math.random()*2.5)+'s linear forwards;';
                 document.body.appendChild(el);
-                setTimeout(function(){el.remove();},4000);
-            },i*50);
+                setTimeout(function(){el.remove();},5000);
+            },i*40);
         })(i);
     }
 }
@@ -343,60 +412,59 @@ def intro():
 <title>Shannu Housie 🎰</title>
 {STYLES}
 </head><body>
-{BG_SCRIPT}
+{BG_FLOATING}
+{SOUND_SCRIPT}
 <div class="container">
     <div style="font-size:3.5em;margin:15px 0;">🎰</div>
     <div class="logo">Shannu Housie</div>
-    <div style="color:#c9a0ff;font-size:0.9em;margin:5px 0 15px;">✨ The Ultimate Family Game ✨</div>
+    <div style="color:#c9a0ff;font-size:0.9em;margin:5px 0 20px;">✨ The Ultimate Family Game ✨</div>
 
     <div class="card">
-        <p style="color:#FFD700;font-size:1.05em;margin-bottom:12px;">📋 Game Rules:</p>
-        <div class="rules-item"><span style="font-size:1.4em;">⭐</span><span><b>Jaldi 5</b> — Any 5 numbers tick avvali (First wins!)</span></div>
-        <div class="rules-item"><span style="font-size:1.4em;">🥇</span><span><b>1st Line</b> — First row complete avvali</span></div>
-        <div class="rules-item"><span style="font-size:1.4em;">🥈</span><span><b>2nd Line</b> — Second row complete avvali</span></div>
-        <div class="rules-item"><span style="font-size:1.4em;">🥉</span><span><b>3rd Line</b> — Third row complete avvali</span></div>
-        <div class="rules-item"><span style="font-size:1.4em;">🎉</span><span><b>Full House</b> — All numbers tick avvali</span></div>
-    </div>
-
-    <div class="card">
-        <p style="color:#FFD700;font-size:1em;margin-bottom:10px;">👑 Leader (Host) చేసేవి:</p>
-        <div style="text-align:left;font-size:0.9em;color:#c9a0ff;line-height:1.8;">
-            🔐 Password తో login avvali<br>
-            👥 Max players & tickets per player set cheyali<br>
-            💰 Prizes set cheyachu (optional)<br>
-            🎮 Game code players ki share cheyali<br>
-            🎲 Number call cheyali<br>
-            🚪 Game end cheyali
+        <p style="color:#FFD700;font-size:1.05em;margin-bottom:12px;">👑 Leader చేసేవి:</p>
+        <div class="info-box">
+            <span style="font-size:1.3em;">🔐</span>
+            <span style="color:#c9a0ff;font-size:0.9em;line-height:1.7;">
+                Password తో login అవ్వాలి<br>
+                Max players & tickets per player set చేయాలి<br>
+                💰 Prizes set చేయవచ్చు (optional)<br>
+                Game code players కి share చేయాలి<br>
+                🎲 Number call చేయాలి (ticket page లోనే)<br>
+                🚪 Game end చేయవచ్చు
+            </span>
         </div>
     </div>
 
     <div class="card">
-        <p style="color:#FFD700;font-size:1em;margin-bottom:10px;">🎫 Player చేసేవి:</p>
-        <div style="text-align:left;font-size:0.9em;color:#c9a0ff;line-height:1.8;">
-            🔢 Game code enter cheyali<br>
-            👤 Name enter cheyali<br>
-            🎯 Auto/Manual mode select cheyali<br>
-            ✅ Ready button click cheyali<br>
-            🎱 Number announce ayinaaka ticket check cheyali<br>
-            🏆 Win aite celebrate cheyali!
+        <p style="color:#FFD700;font-size:1.05em;margin-bottom:12px;">🎫 Player చేసేవి:</p>
+        <div class="info-box">
+            <span style="font-size:1.3em;">🎮</span>
+            <span style="color:#c9a0ff;font-size:0.9em;line-height:1.7;">
+                Game code enter చేయాలి<br>
+                👤 Name enter చేయాలి<br>
+                🎯 Auto/Manual mode select చేయాలి<br>
+                ✅ Ready button click చేయాలి<br>
+                🎱 Number వినగానే ticket check చేయాలి<br>
+                🏆 Win అయితే celebrate చేయాలి!
+            </span>
         </div>
     </div>
 
     <div class="card" style="background:rgba(255,215,0,0.05);">
-        <p style="color:#aaa;font-size:0.85em;margin-bottom:8px;">🎯 Tick Modes:</p>
-        <div style="display:flex;gap:10px;text-align:left;font-size:0.85em;">
-            <div style="flex:1;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;">
-                <b style="color:#FFD700;">👆 Manual</b><br>
-                <span style="color:#aaa;">Number vinnaaka meeru tap cheyali</span>
+        <div style="display:flex;gap:10px;">
+            <div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:10px;">
+                <div style="font-size:1.3em;">👆</div>
+                <b style="color:#FFD700;font-size:0.9em;">Manual</b><br>
+                <span style="color:#aaa;font-size:0.8em;">Number వినాక tap చేయాలి</span>
             </div>
-            <div style="flex:1;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;">
-                <b style="color:#52b788;">✅ Auto</b><br>
-                <span style="color:#aaa;">Automatically tick avvutundi</span>
+            <div style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border-radius:10px;">
+                <div style="font-size:1.3em;">✅</div>
+                <b style="color:#52b788;font-size:0.9em;">Auto</b><br>
+                <span style="color:#aaa;font-size:0.8em;">Automatically tick అవుతుంది</span>
             </div>
         </div>
     </div>
 
-    <a href="/home" class="btn btn-gold btn-full" style="font-size:1.3em;padding:18px;margin-top:10px;">
+    <a href="/home" class="btn btn-gold btn-full" style="font-size:1.3em;padding:18px;margin-top:10px;" onclick="playBg()">
         🎮 Let\'s Play!
     </a>
     <div style="color:#333;font-size:0.75em;margin-top:8px;">Shannu Housie Game v3.0 🎰</div>
@@ -411,7 +479,8 @@ def home():
 <title>Shannu Housie 🎰</title>
 {STYLES}
 </head><body>
-{BG_SCRIPT}
+{BG_FLOATING}
+{SOUND_SCRIPT}
 <div class="container">
     <div style="font-size:3em;margin:15px 0;">🎰</div>
     <div class="logo">Shannu Housie</div>
@@ -431,7 +500,7 @@ def home():
             </button>
         </form>
     </div>
-    <a href="/" style="color:#444;font-size:0.85em;">📋 Rules చూడు</a>
+    <a href="/" style="color:#444;font-size:0.85em;">📋 Info చూడు</a>
 </div>
 </body></html>'''
 
@@ -442,13 +511,12 @@ def host_login():
         pwd=request.form.get('password','')
         max_p=request.form.get('max_players','0')
         tpp=request.form.get('tickets_per_player','1')
-        host_play=request.form.get('host_play','no')
         prizes={
-            'jaldi5': request.form.get('prize_jaldi5','Winner!'),
-            'line1': request.form.get('prize_line1','Winner!'),
-            'line2': request.form.get('prize_line2','Winner!'),
-            'line3': request.form.get('prize_line3','Winner!'),
-            'housie': request.form.get('prize_housie','Winner!'),
+            'jaldi5': request.form.get('prize_jaldi5',''),
+            'line1': request.form.get('prize_line1',''),
+            'line2': request.form.get('prize_line2',''),
+            'line3': request.form.get('prize_line3',''),
+            'housie': request.form.get('prize_housie',''),
         }
         if pwd==HOST_PASSWORD:
             try:
@@ -469,24 +537,26 @@ def host_login():
                         'latest_winner':None
                     })
                     session['role']='host'
-                    if host_play=='yes':
-                        game_state['players']['Host']={
-                            'tickets':[],
-                            'ready':False,
-                            'tick_mode':'auto',
-                            'manual_ticked':[],
-                            'color_idx':0
-                        }
-                        for t in range(tpp):
-                            tid=f'Host_t{t+1}'
-                            game_state['tickets'][tid]=generate_ticket()
-                            game_state['players']['Host']['tickets'].append(tid)
-                        session['player_name']='Host'
-                    return redirect('/host')
+                    # Leader always plays
+                    color_idx=0
+                    tpp_val=game_state['tickets_per_player']
+                    game_state['players']['Leader']={
+                        'tickets':[],
+                        'ready':True,
+                        'tick_mode':'auto',
+                        'manual_ticked':[],
+                        'color_idx':color_idx
+                    }
+                    for t in range(tpp_val):
+                        tid=f'Leader_t{t+1}'
+                        game_state['tickets'][tid]=generate_ticket()
+                        game_state['players']['Leader']['tickets'].append(tid)
+                    session['player_name']='Leader'
+                    return redirect('/play')
                 else:
                     error='Players: 2-20, Tickets: 1-4!'
             except:
-                error='Valid numbers enter cheyandi!'
+                error='Valid numbers enter చేయండి!'
         else:
             error='❌ Wrong password!'
 
@@ -496,11 +566,12 @@ def host_login():
 <title>Leader Entry 👑</title>
 {STYLES}
 </head><body>
-{BG_SCRIPT}
+{BG_FLOATING}
+{SOUND_SCRIPT}
 <div class="container">
     <div style="font-size:2.5em;margin:15px 0;">👑</div>
     <div class="logo" style="font-size:1.6em;">Leader Entry</div>
-    <div style="color:#c9a0ff;font-size:0.85em;margin-bottom:15px;">Game create cheyandi</div>
+    <div style="color:#c9a0ff;font-size:0.85em;margin-bottom:15px;">Game create చేయండి</div>
 
     <div class="card">
         <form method="POST">
@@ -512,28 +583,18 @@ def host_login():
 
             <p style="color:#FFD700;margin:12px 0 8px;">🎫 Tickets per Player:</p>
             <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;">
-                {"".join(f'<label style="background:rgba(255,255,255,0.08);padding:10px 16px;border-radius:10px;cursor:pointer;border:1px solid rgba(255,215,0,0.3);"><input type="radio" name="tickets_per_player" value="{i}"> {i}</label>' for i in range(1,5))}
+                {"".join(f'<label style="background:rgba(255,255,255,0.08);padding:10px 16px;border-radius:10px;cursor:pointer;border:1px solid rgba(255,215,0,0.3);"><input type="radio" name="tickets_per_player" value="{i}" {"checked" if i==1 else ""}> {i}</label>' for i in range(1,5))}
             </div>
 
             <p style="color:#FFD700;margin:12px 0 8px;">🏆 Prizes (optional):</p>
-            <input class="prize-input" type="text" name="prize_jaldi5" placeholder="⭐ Jaldi 5 prize (e.g. Rs.50)">
+            <input class="prize-input" type="text" name="prize_jaldi5" placeholder="⭐ Jaldi 5 prize">
             <input class="prize-input" type="text" name="prize_line1" placeholder="🥇 1st Line prize">
             <input class="prize-input" type="text" name="prize_line2" placeholder="🥈 2nd Line prize">
             <input class="prize-input" type="text" name="prize_line3" placeholder="🥉 3rd Line prize">
-            <input class="prize-input" type="text" name="prize_housie" placeholder="🎉 Full House prize (e.g. Rs.200)">
-
-            <p style="color:#FFD700;margin:12px 0 8px;">🎮 Leader kuda play chestara?</p>
-            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:10px;">
-                <label style="background:rgba(255,255,255,0.08);padding:12px 20px;border-radius:12px;cursor:pointer;border:1px solid rgba(255,215,0,0.3);">
-                    <input type="radio" name="host_play" value="yes"> ✅ Yes
-                </label>
-                <label style="background:rgba(255,255,255,0.08);padding:12px 20px;border-radius:12px;cursor:pointer;border:1px solid rgba(255,215,0,0.3);">
-                    <input type="radio" name="host_play" value="no" checked> ❌ No
-                </label>
-            </div>
+            <input class="prize-input" type="text" name="prize_housie" placeholder="🎉 Full House prize">
 
             {"<p class='error'>"+error+"</p>" if error else ""}
-            <button type="submit" class="btn btn-gold btn-full" style="margin-top:10px;font-size:1.2em;">
+            <button type="submit" class="btn btn-gold btn-full" style="margin-top:12px;font-size:1.2em;">
                 🚀 Create Game
             </button>
         </form>
@@ -554,7 +615,7 @@ def join_code():
 <title>Wrong Code</title>
 {STYLES}
 </head><body>
-{BG_SCRIPT}
+{BG_FLOATING}
 <div class="container" style="padding-top:80px;">
     <div style="font-size:4em;">❌</div>
     <div class="logo" style="color:#FF6B6B;margin-top:10px;">Wrong Code!</div>
@@ -572,16 +633,16 @@ def player_login():
         name=request.form.get('name','').strip()
         tick_mode=request.form.get('tick_mode','manual')
         if not name:
-            error='Name enter cheyandi!'
+            error='Name enter చేయండి!'
         elif len(name)>20:
             error='Name too long!'
         elif game_state['max_players']==0:
-            error='⏳ Leader game set cheyyaledu!'
+            error='⏳ Leader game set చేయలేదు!'
         elif len(game_state['players'])>=game_state['max_players']:
             error='❌ Game Full!'
         elif game_state['game_started']:
             error='❌ Game already started!'
-        elif name.lower()=='host':
+        elif name.lower() in ['leader','host']:
             error='❌ Reserved name!'
         elif name in game_state['players']:
             error='❌ Name already taken!'
@@ -609,7 +670,8 @@ def player_login():
 <title>Join Game 🎫</title>
 {STYLES}
 </head><body>
-{BG_SCRIPT}
+{BG_FLOATING}
+{SOUND_SCRIPT}
 <div class="container">
     <div style="font-size:2.5em;margin:15px 0;">🎫</div>
     <div class="logo" style="font-size:1.5em;">Join Game</div>
@@ -655,14 +717,9 @@ def play():
     prizes=game_state.get('prizes',{})
     color_idx=player.get('color_idx',0)
     bg_color,accent=TICKET_COLORS[color_idx%len(TICKET_COLORS)]
+    is_host=session.get('role')=='host'
 
     effective_ticked=called_set if tick_mode=='auto' else manual_ticked
-
-    # Check wins for all tickets
-    my_wins=[]
-    for prize in ['jaldi5','line1','line2','line3','housie']:
-        if winners[prize]==player_name:
-            my_wins.append(prize)
 
     all_nums_total=[]
     for tid in player['tickets']:
@@ -685,8 +742,8 @@ def play():
                 key=f'line{i+1}'
                 if not winners[key]:
                     winners[key]=player_name
-                    labels={'line1':'🥇 1st Line','line2':'🥈 2nd Line','line3':'🥉 3rd Line'}
-                    game_state['latest_winner']={'prize':key,'name':player_name,'label':labels[key],'prize_val':prizes.get(key,'')}
+                    lbs={'line1':'🥇 1st Line','line2':'🥈 2nd Line','line3':'🥉 3rd Line'}
+                    game_state['latest_winner']={'prize':key,'name':player_name,'label':lbs[key],'prize_val':prizes.get(key,'')}
 
         all_t=[n for row in td for n in row if n!=0]
         if all_t and all(n in effective_ticked for n in all_t) and not winners['housie']:
@@ -708,13 +765,13 @@ def play():
                 elif tick_mode=='manual' and cell in manual_ticked:
                     rows_html+=f'<td class="td-ticked">✓{cell}</td>'
                 elif tick_mode=='manual' and cell in called_set:
-                    rows_html+=f'<td class="td-manual-hit" onclick="manualTick({cell})">?</td>'
+                    rows_html+=f'<td class="td-manual-hit" onclick="manualTick({cell},this)">?</td>'
                 else:
                     rows_html+=f'<td class="td-normal">{cell}</td>'
             rows_html+='</tr>'
         tickets_html+=f'''
-        <div class="ticket-wrap" style="background:{bg_color};border-color:{accent}44;">
-            <div class="ticket-label" style="background:{accent}33;color:{accent};">
+        <div class="ticket-wrap" style="background:{bg_color};border-color:{accent}55;">
+            <div class="ticket-label" style="background:{accent}22;color:{accent};">
                 🎫 Ticket {t_idx+1} — {player_name}
             </div>
             <table class="ticket-table">{rows_html}</table>
@@ -722,32 +779,33 @@ def play():
 
     # Win messages
     win_msgs=''
-    labels_map={'housie':'🎉 HOUSIE! YOU WIN!','line3':'🥉 3rd Line Win!','line2':'🥈 2nd Line Win!','line1':'🥇 1st Line Win!','jaldi5':'⭐ Jaldi 5 Win!'}
+    lm={'housie':'🎉 HOUSIE! YOU WIN!','line3':'🥉 3rd Line Win!','line2':'🥈 2nd Line Win!','line1':'🥇 1st Line Win!','jaldi5':'⭐ Jaldi 5 Win!'}
     for prize in ['housie','line3','line2','line1','jaldi5']:
         if winners[prize]==player_name:
             pval=prizes.get(prize,'')
-            win_msgs+=f'<div class="win-banner">{labels_map[prize]} {pval}</div>'
+            win_msgs+=f'<div class="win-banner">{lm[prize]} {pval} 🪙</div>'
             break
 
     last_num=called[-1] if called else None
-    game_status='✅ Game Running!' if game_state['game_started'] else '⏳ Waiting to start...'
     ready=player['ready']
-    is_host=session.get('role')=='host'
+
+    # All players ready check (excluding leader)
+    non_leader_players={k:v for k,v in game_state['players'].items() if k!='Leader'}
+    all_joined=len(non_leader_players)==(game_state['max_players']-1)
+    all_ready=all_joined and all(v['ready'] for v in non_leader_players.values())
+    can_call=all_ready or game_state['game_started']
 
     # Latest winner banner
     lw=game_state.get('latest_winner')
-    latest_winner_html=''
+    lw_html=''
     if lw:
-        latest_winner_html=f'''
+        lw_html=f'''
         <div id="winnerBanner" class="global-winner" onclick="this.style.display=\'none\'">
             🏆 {lw["label"]} — {lw["name"]}! {lw.get("prize_val","")} 🎊
         </div>
         <script>
-        launchConfetti();
-        setTimeout(function(){{
-            var b=document.getElementById("winnerBanner");
-            if(b)b.style.display="none";
-        }},5000);
+        launchConfetti(); playWin();
+        setTimeout(function(){{var b=document.getElementById("winnerBanner");if(b)b.style.display="none";}},5000);
         </script>'''
 
     # Voice
@@ -758,7 +816,7 @@ def play():
         if(ls!="{last_num}"){{
             sessionStorage.setItem("ls","{last_num}");
             setTimeout(function(){{
-                if("speechSynthesis" in window){{
+                if("speechSynthesis" in window && (localStorage.getItem("soundOn")!=="false")){{
                     window.speechSynthesis.cancel();
                     var m=new SpeechSynthesisUtterance("Number {last_num}");
                     m.lang="en-IN"; m.rate=0.75; m.pitch=1; m.volume=1;
@@ -766,6 +824,17 @@ def play():
                 }}
             }},300);
         }}'''
+
+    # Status message
+    if not game_state['game_started']:
+        if is_host and not all_ready:
+            status_msg=f'<div style="color:#FFD700;font-size:0.85em;margin:5px 0;">⏳ Waiting for all players to join & ready... ({len(non_leader_players)}/{game_state["max_players"]-1})</div>'
+        elif is_host and all_ready:
+            status_msg='<div style="color:#52b788;font-size:0.9em;margin:5px 0;">✅ All players ready! Call first number!</div>'
+        else:
+            status_msg='<div style="color:#aaa;font-size:0.85em;margin:5px 0;">⏳ Waiting for leader to start...</div>'
+    else:
+        status_msg='<div style="color:#52b788;font-size:0.82em;margin:3px 0;">✅ Game Running!</div>'
 
     return f'''<!DOCTYPE html>
 <html><head>
@@ -775,28 +844,30 @@ def play():
 {STYLES}
 {CONFETTI_SCRIPT}
 </head><body>
-{BG_SCRIPT}
-{latest_winner_html}
+{BG_FLOATING}
+{SOUND_SCRIPT}
+{lw_html}
 <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:1.1em;font-weight:bold;color:{accent};">🎫 {player_name}</div>
-        {"<a href='/host' class='btn btn-gold' style='padding:7px 14px;font-size:0.8em;'>👑 Panel</a>" if is_host else ""}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <div style="font-weight:bold;color:{accent};font-size:1.05em;">🎫 {player_name}</div>
+        {"<a href='/host' class='btn btn-outline' style='padding:6px 12px;font-size:0.8em;'>👑 Panel</a>" if is_host else ""}
     </div>
 
-    <div style="color:#888;font-size:0.78em;margin-bottom:5px;">
-        {game_status} | {"👆 Manual" if tick_mode=="manual" else "✅ Auto"}
-    </div>
+    {status_msg}
 
-    {"<div class='number-display'>"+str(last_num)+"</div>" if last_num and game_state["game_started"] else "<div style='height:15px'></div>"}
+    {"<div class='number-display'>"+str(last_num)+"</div>" if last_num and game_state["game_started"] else "<div style='height:10px;'></div>"}
 
     {win_msgs}
+
+    {"<form method='POST' action='/call-ticket' style='margin:8px 0;'><button type='submit' class='btn btn-gold btn-full' style='font-size:1.2em;padding:14px;'>🎲 Call Number</button></form>" if is_host and can_call and not game_state['game_over'] and [n for n in range(1,91) if n not in called] else ""}
+    {"<div style='color:#555;font-size:0.8em;margin:5px 0;'>⏳ Waiting for all players to be ready...</div>" if is_host and not can_call else ""}
 
     {tickets_html}
 
     {"" if game_state["game_started"] else
         ("<form method='POST' action='/ready'><button type='submit' class='btn btn-green btn-full'>✅ I am Ready!</button></form>"
-         if not ready else
-         "<div class='card' style='color:#52b788;padding:10px;font-size:0.9em;'>✅ Ready! Waiting... ⏳</div>")}
+         if not ready and not is_host else
+         ("" if is_host else "<div class='card' style='color:#52b788;padding:10px;font-size:0.9em;'>✅ Ready! Waiting... ⏳</div>"))}
 
     <div class="stats-row" style="margin-top:8px;">
         <div class="stat-box">Called<span>{len(called)}</span></div>
@@ -804,7 +875,7 @@ def play():
         <div class="stat-box">Ticked<span>{ticked_count}</span></div>
     </div>
 
-    <div style="color:#333;font-size:0.7em;margin-top:5px;word-break:break-all;">
+    <div style="color:#333;font-size:0.7em;margin-top:5px;">
         Last 10: {", ".join(map(str,called[-10:])) if called else "None yet"}
     </div>
 
@@ -815,11 +886,27 @@ def play():
 </div>
 <script>
 window.onload=function(){{{voice_js}}}
-function manualTick(num){{
-    fetch("/manual-tick/"+num,{{method:"POST"}}).then(function(){{location.reload();}});
+function manualTick(num,el){{
+    playTick();
+    el.style.background='linear-gradient(135deg,#FFD700,#FFA500)';
+    el.style.color='black';
+    el.onclick=null;
+    fetch("/manual-tick/"+num,{{method:"POST"}});
 }}
 </script>
 </body></html>'''
+
+@app.route('/call-ticket', methods=['POST'])
+def call_ticket():
+    if session.get('role')!='host':
+        return redirect('/home')
+    remaining=[n for n in range(1,91) if n not in game_state['called_numbers']]
+    if remaining:
+        num=random.choice(remaining)
+        game_state['called_numbers'].append(num)
+        game_state['game_started']=True
+        game_state['latest_winner']=None
+    return redirect('/play')
 
 @app.route('/ready', methods=['POST'])
 def ready():
@@ -841,7 +928,7 @@ def manual_tick(num):
 @app.route('/quit')
 def quit_game():
     name=session.get('player_name')
-    if name and name in game_state['players']:
+    if name and name in game_state['players'] and name!='Leader':
         del game_state['players'][name]
     session.clear()
     return redirect('/home')
@@ -856,27 +943,26 @@ def host():
     players=game_state['players']
     winners=game_state['winners']
     prizes=game_state.get('prizes',{})
-    ready_count=sum(1 for p in players.values() if p['ready'])
+    non_leader={k:v for k,v in players.items() if k!='Leader'}
+    ready_count=sum(1 for p in non_leader.values() if p['ready'])
     total=len(players)
     max_p=game_state['max_players']
-    all_ready=(total==max_p and ready_count==total and total>0)
 
     players_html=''.join(f'''
     <div class="player-item">
-        <span>{"✅" if d["ready"] else "⏳"} {n}</span>
+        <span>{"✅" if d["ready"] or n=="Leader" else "⏳"} {n} {"👑" if n=="Leader" else ""}</span>
         <span style="color:#aaa;font-size:0.8em;">{len(d["tickets"])}🎫 | {"👆" if d["tick_mode"]=="manual" else "✅"}</span>
     </div>''' for n,d in players.items())
 
-    labels={'jaldi5':'⭐ Jaldi 5','line1':'🥇 1st Line','line2':'🥈 2nd Line','line3':'🥉 3rd Line','housie':'🎉 Full House'}
+    lbs={'jaldi5':'⭐ Jaldi 5','line1':'🥇 1st Line','line2':'🥈 2nd Line','line3':'🥉 3rd Line','housie':'🎉 Full House'}
     winner_html=''.join(f'''
     <div class="winner-row">
-        <span>{labels[p]}</span>
-        <span style="color:#FFD700;font-weight:bold;">🏆 {w} — {prizes.get(p,"")}</span>
+        <span>{lbs[p]}</span>
+        <span style="color:#FFD700;font-weight:bold;">🏆 {w} {("— "+prizes[p]) if prizes.get(p) else ""}</span>
     </div>''' for p,w in winners.items() if w)
 
     last_num=called[-1] if called else '-'
     code=game_state.get('game_code','-----')
-    host_ticket=session.get('player_name')=='Host'
 
     lw=game_state.get('latest_winner')
     lw_html=''
@@ -886,7 +972,7 @@ def host():
             🏆 {lw["label"]} — {lw["name"]}! {lw.get("prize_val","")} 🎊
         </div>
         <script>
-        launchConfetti();
+        launchConfetti(); playWin();
         setTimeout(function(){{var b=document.getElementById("winnerBanner");if(b)b.style.display="none";}},5000);
         </script>'''
 
@@ -897,15 +983,15 @@ def host():
 {STYLES}
 {CONFETTI_SCRIPT}
 </head><body>
-{BG_SCRIPT}
+{BG_FLOATING}
+{SOUND_SCRIPT}
 {lw_html}
 <div class="container">
     <div class="logo" style="font-size:1.4em;">👑 Leader Panel</div>
 
     <div class="card" style="padding:12px;">
-        <p style="color:#aaa;font-size:0.82em;margin-bottom:5px;">🎮 Game Code:</p>
+        <p style="color:#aaa;font-size:0.82em;margin-bottom:5px;">🎮 Game Code — Players కి share చేయండి:</p>
         <div class="game-code">{code}</div>
-        <p style="color:#555;font-size:0.72em;">Share this with players</p>
     </div>
 
     <div class="stats-row">
@@ -915,14 +1001,12 @@ def host():
         <div class="stat-box">Left<span>{len(remaining)}</span></div>
     </div>
 
-    {"<div class='win-banner'>🎉 All Players Ready! Start!</div>" if all_ready and not game_state['game_started'] else ""}
-
     <div class="number-display">{last_num}</div>
 
     {"<form method='POST' action='/call'><button type='submit' class='btn btn-gold btn-full' style='font-size:1.3em;padding:16px;'>🎲 Call Number</button></form>" if remaining and not game_state['game_over'] else ""}
     {"<div class='win-banner'>🎉 All 90 Numbers Called!</div>" if not remaining else ""}
 
-    {"<a href='/play' class='btn btn-purple btn-full'>🎫 My Ticket</a>" if host_ticket else ""}
+    <a href="/play" class="btn btn-purple btn-full" style="margin:5px auto;">🎫 My Tickets</a>
 
     <form method="POST" action="/end-game">
         <button type="submit" class="btn btn-red btn-full">🚪 End Game</button>
@@ -932,7 +1016,7 @@ def host():
 
     <div class="card">
         <p style="color:#FFD700;margin-bottom:8px;">👥 Players ({total}/{max_p})</p>
-        {players_html if players_html else "<p style='color:#444;'>Waiting for players...</p>"}
+        {players_html if players_html else "<p style='color:#444;'>Waiting...</p>"}
     </div>
 
     <div class="called-grid">
@@ -967,10 +1051,10 @@ def end_game():
 def game_over_page():
     winners=game_state['winners']
     prizes=game_state.get('prizes',{})
-    labels={'jaldi5':'⭐ Jaldi 5','line1':'🥇 1st Line','line2':'🥈 2nd Line','line3':'🥉 3rd Line','housie':'🎉 Full House'}
+    lbs={'jaldi5':'⭐ Jaldi 5','line1':'🥇 1st Line','line2':'🥈 2nd Line','line3':'🥉 3rd Line','housie':'🎉 Full House'}
     winner_html=''.join(f'''
     <div class="winner-row" style="margin:7px 0;">
-        <span style="font-size:1em;">{labels[p]}</span>
+        <span>{lbs[p]}</span>
         <div style="text-align:right;">
             <div style="color:#FFD700;font-weight:bold;">🏆 {w}</div>
             {"<div style='color:#52b788;font-size:0.8em;'>"+prizes[p]+"</div>" if prizes.get(p) else ""}
@@ -984,19 +1068,19 @@ def game_over_page():
 {STYLES}
 {CONFETTI_SCRIPT}
 </head><body>
-{BG_SCRIPT}
+{BG_FLOATING}
 <div class="container">
     <div style="font-size:3.5em;margin:20px 0;">🎰</div>
     <div class="logo">Game Over!</div>
-    <div style="color:#c9a0ff;margin:8px 0 20px;font-size:0.95em;">Thanks for playing Shannu Housie! 🪙</div>
+    <div style="color:#c9a0ff;margin:8px 0 20px;">Thanks for playing Shannu Housie! 🪙</div>
 
     <div class="card">
-        <h3 style="color:#FFD700;margin-bottom:12px;font-size:1.2em;">🏆 Final Winners</h3>
-        {winner_html if winner_html else "<p style='color:#444;'>No winners recorded</p>"}
+        <h3 style="color:#FFD700;margin-bottom:12px;">🏆 Final Winners</h3>
+        {winner_html if winner_html else "<p style='color:#444;'>No winners</p>"}
     </div>
 
     <div style="font-size:2em;margin:15px 0;">🪙 🎫 🎰 🎫 🪙</div>
-    <div style="color:#333;font-size:0.75em;margin-bottom:20px;">Shannu Housie Game v3.0</div>
+    <div style="color:#333;font-size:0.75em;margin-bottom:20px;">Shannu Housie v3.0</div>
 
     <a href="/reset" class="btn btn-gold btn-full" style="font-size:1.2em;">🔄 Play Again</a>
 </div>
@@ -1009,7 +1093,7 @@ def reset():
         'called_numbers':[],'players':{},'max_players':0,
         'tickets_per_player':1,'game_started':False,'game_over':False,
         'game_code':None,'tickets':{},
-        'prizes':{'jaldi5':'Winner!','line1':'Winner!','line2':'Winner!','line3':'Winner!','housie':'Winner!'},
+        'prizes':{'jaldi5':'','line1':'','line2':'','line3':'','housie':''},
         'winners':{'jaldi5':None,'line1':None,'line2':None,'line3':None,'housie':None},
         'latest_winner':None
     })
