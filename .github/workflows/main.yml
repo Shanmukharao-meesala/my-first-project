@@ -5,22 +5,25 @@ on:
 jobs:
   build:
      runs-on: ubuntu-latest
-     
      steps:
        - uses: actions/checkout@v3
-       
+       - name: Set up Python
+         uses: actions/setup-python@v4
+         with:
+           python-version: '3.12'
+       - name: Install dependencies
+         run: pip install flask pytest
+       - name: Run Tests
+         run: pytest test_app.py -v
        - name: Login to Docker Hub
          uses: docker/login-action@v2
          with:
            username: ${{ secrets.DOCKER_USERNAME }}
            password: ${{ secrets.DOCKER_PASSWORD }}
-        
        - name: Build Docker Image
          run: docker build -t shannudocker02/myapp .
-
        - name: Push to Docker Hub
          run: docker push shannudocker02/myapp
-         
        - name: Deploy to EC2
          uses: appleboy/ssh-action@master
          with:
@@ -30,5 +33,4 @@ jobs:
            script: |
               sudo docker rm -f myapp || true
               sudo docker pull shannudocker02/myapp
-              sudo docker run -d --name myapp -p 5000:5000 shannudocker02/myapp
-         
+              sudo docker run -d --name myapp -p 5000:5000 shannudocker02/myapp  
